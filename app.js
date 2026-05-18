@@ -52,7 +52,8 @@ function runIntro() {
 
 // ─── Load products ───
 async function loadProducts() {
-  const res = await fetch('products.json');
+  // Alterado apenas aqui para buscar do link do GitHub Raw que você enviou
+  const res = await fetch('https://raw.githubusercontent.com/lucas02-pixel/5bzon/refs/heads/main/Products.json');
   products  = await res.json();
   renderProducts();
 }
@@ -91,6 +92,7 @@ function addToCart(id) {
   updateUI();
 }
 
+// ─── Change Qty ───
 function changeQty(id, delta) {
   const qty = (cart[id] || 0) + delta;
   if (qty <= 0) delete cart[id];
@@ -98,6 +100,7 @@ function changeQty(id, delta) {
   updateUI();
 }
 
+// ─── Cart Total ───
 function cartTotal() {
   return Object.entries(cart).reduce((sum, [id, qty]) => {
     const p = products.find(x => x.id === parseInt(id));
@@ -105,17 +108,20 @@ function cartTotal() {
   }, 0);
 }
 
+// ─── Update UI ───
 function updateUI() {
   renderProducts();
   renderCart();
   updateCartCount();
 }
 
+// ─── Update Cart Count ───
 function updateCartCount() {
   const total = Object.values(cart).reduce((a, b) => a + b, 0);
   document.getElementById('cart-count').textContent = total;
 }
 
+// ─── Render Cart ───
 function renderCart() {
   const container = document.getElementById('cart-items');
   const entries   = Object.entries(cart).filter(([, q]) => q > 0);
@@ -171,6 +177,7 @@ function payShowStep(id) {
     });
 }
 
+// ─── Show Payment ───
 function showPayment() {
   closeCart();
   const total = cartTotal();
@@ -186,6 +193,7 @@ function showPayment() {
   document.getElementById('payment-screen').classList.add('visible');
 }
 
+// ─── Hide Payment ───
 function hidePayment() {
   document.getElementById('payment-screen').classList.remove('visible');
 }
