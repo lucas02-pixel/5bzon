@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>5bzon</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ─── INTRO ─── -->
+<div id="intro">
+  <div class="intro-scanline"></div>
+  <div class="intro-logo">
+    <span class="intro-letter">5</span>
+    <span class="intro-letter">B</span>
+    <span class="intro-letter">Z</span>
+    <span class="intro-letter">O</span>
+    <span class="intro-letter">N</span>
+  </div>
+</div>
+
+<!-- ─── SITE ─── -->
+<div id="site">
+
+  <header>
+    <div>
+      <div class="header-logo">5bzon</div>
+    </div>
+    <button class="cart-btn" id="cart-btn">
+      🛒 Carrinho
+      <div class="cart-count" id="cart-count">0</div>
+    </button>
+  </header>
+
+  <section class="hero">
+    <div class="hero-tag">// loja oficial</div>
+    <div class="hero-title">
+      NO 6.6 TEM<br/>
+      <span>PREÇOS INSANOS</span><br/>
+      AGUARDE
+    </div>
+    <div class="hero-desc">
+     Diversos produtos por sulegais
+    </div>
+  </section>
+
+  <div class="section-label">// produtos disponíveis</div>
+  <div class="products-grid" id="products-grid"></div>
+
+</div>
+
+<!-- ─── OVERLAY ─── -->
+<div class="overlay" id="overlay"></div>
+
+<!-- ─── CART DRAWER ─── -->
+<div class="cart-drawer" id="cart-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title">Carrinho</div>
+    <button class="close-btn" id="close-drawer">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="drawer-footer">
+    <div class="total-row">
+      <div>
+        <div class="total-label">Total</div>
+        <div class="total-unit">sulegais</div>
+      </div>
+      <div class="total-val" id="cart-total">0</div>
+    </div>
+    <button class="checkout-btn" id="checkout-btn" disabled>FINALIZAR COMPRA</button>
+  </div>
+</div>
+
+<!-- ─── PAYMENT SCREEN ─── -->
+<div id="payment-screen">
+  <div class="payment-container">
+    <div class="pay-logo">5bzon</div>
+    
+    <div class="pay-card">
+
+      <!-- STEP 1: Login GIX -->
+      <div id="pay-step-login">
+        <div class="pay-step-title">
+          <span class="pay-step-tag">// acesse sua conta</span>
+          <div class="pay-step-head">Entre com seu GIX</div>
+        </div>
+
+        <div class="pay-valor-mini">
+          Valor total: <strong id="pay-valor">0</strong> <span>sulegais</span>
+        </div>
+
+        <div class="pay-input-group">
+          <label class="pay-input-label">Código GIX</label>
+          <input id="pay-gix-input" type="text" placeholder="ex: SUL375966" class="pay-input"/>
+        </div>
+        <div class="pay-input-group">
+          <label class="pay-input-label">Senha</label>
+          <input id="pay-senha-input" type="password" placeholder="Sua senha" class="pay-input"/>
+        </div>
+
+        <div class="pay-error" id="pay-login-error"></div>
+
+        <button class="pay-action-btn" id="pay-login-btn">Entrar →</button>
+        <button class="pay-back-btn" id="pay-back-login">← Voltar ao carrinho</button>
+      </div>
+
+      <!-- STEP 2: Confirmar pagamento -->
+      <div id="pay-step-paying" style="display:none">
+        <div class="pay-step-title">
+          <span class="pay-step-tag">// confirmar compra</span>
+        </div>
+
+        <div class="pay-user-box">
+          <div class="pay-user-avatar" id="pay-user-avatar">?</div>
+          <div>
+            <div class="pay-user-name" id="pay-user-name">—</div>
+            <div class="pay-user-gix" id="pay-user-gix">GIX: —</div>
+            <div class="pay-user-saldo" id="pay-user-saldo">— sulegais</div>
+          </div>
+          <button class="pay-change-btn" id="pay-change-user">Trocar conta</button>
+        </div>
+
+        <div class="pay-confirm-box">
+          <div class="pay-confirm-row">
+            <span class="pay-confirm-key">Valor</span>
+            <span class="pay-confirm-val accent" id="pay-valor2">0</span>
+          </div>
+          <div class="pay-confirm-row">
+            <span class="pay-confirm-key">Destino</span>
+            <span class="pay-confirm-val muted">SUL873302 (loja)</span>
+          </div>
+        </div>
+
+        <div class="pay-error" id="pay-saldo-warn" style="display:none">
+          ⚠️ Saldo insuficiente para esta compra.
+        </div>
+
+        <div class="pay-error" id="pay-paying-error" style="display:none"></div>
+
+        <button class="pay-action-btn" id="pay-confirm-btn">Confirmar pagamento</button>
+      </div>
+
+      <!-- STEP 3: Sucesso -->
+      <div id="pay-step-success" style="display:none; text-align:center; padding:20px 0;">
+        <div style="font-size:72px; line-height:1.2; margin-bottom:16px">✅</div>
+        <div class="pay-success-title">Compra confirmada!</div>
+        <div class="pay-success-msg">
+          <span id="pay-success-nome">—</span> enviou
+          <strong id="pay-success-valor">0</strong> sulegais com sucesso.
+        </div>
+        <button class="pay-action-btn" id="pay-new-btn" style="margin-top:28px">Fazer nova compra</button>
+      </div>
+
+      <!-- STEP 4: Erro geral -->
+      <div id="pay-step-error" style="display:none; text-align:center; padding:20px 0;">
+        <div style="font-size:48px; margin-bottom:16px">⚠️</div>
+        <div class="pay-error-title">Erro de conexão</div>
+        <div class="pay-error-msg">Não foi possível processar.<br/>Verifique sua conexão.</div>
+        <button class="pay-action-btn" id="pay-error-retry" style="margin-top:24px">← Voltar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
