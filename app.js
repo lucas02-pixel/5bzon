@@ -127,7 +127,6 @@ function cartTotalWithDiscount() {
 
   let total;
   if (appliedCoupon.type === 'percent') {
-    // Math.ceil garante que o desconto sempre arredonda pra cima (favorece o cliente)
     const desconto = Math.ceil(raw * appliedCoupon.value / 100);
     total = raw - desconto;
   } else if (appliedCoupon.type === 'fixed') {
@@ -185,7 +184,7 @@ function renderCart() {
     );
   }
 
-  document.getElementById('cart-total').textContent = cartTotal();
+  document.getElementById('cart-total').textContent = cartTotalWithDiscount(); // Atualizado para mostrar o total correto na UI do carrinho se aplicável
   document.getElementById('checkout-btn').disabled = cartTotal() === 0;
 }
 
@@ -245,7 +244,7 @@ async function doPayLogin() {
   try {
     const result = await findByGix(gix);
 
-    if (!result)                         { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
+    if (!result)                 { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
     if (result.data.senha !== senha)     { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
     if (gix === GIX_LOJA.toUpperCase()) { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
 
@@ -368,7 +367,7 @@ function doContinueFromCoupon() {
 
 // ─── Confirmar pagamento ───
 async function doConfirmPayment() {
-  const total = cartTotalWithDiscount(); // ← sempre com desconto
+  const total = cartTotalWithDiscount(); 
   const btn   = document.getElementById('pay-confirm-btn');
   const errEl = document.getElementById('pay-paying-error');
 
@@ -417,8 +416,9 @@ async function doConfirmPayment() {
     document.getElementById('pay-success-nome').textContent  = loggedUser.nome;
     payShowStep('pay-step-success');
 
+    // Estado limpo de forma síncrona e correta após sucesso
     cart = {};
-    appliedCoupon = null;
+    appliedCoupon = null; 
     updateUI();
 
   } catch (e) {
