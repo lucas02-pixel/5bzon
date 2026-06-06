@@ -9,6 +9,8 @@ import {
   addDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+// Adicionado modulo do Messaging
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXFhRZ_Byp40-sIxaNkyICoe066p6J04w",
@@ -21,6 +23,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
+// Inicializa o Messaging
+const messaging = getMessaging(app);
 
 const GIX_LOJA = "SUL873302";
 const MAX_QTY  = 5;
@@ -43,6 +47,40 @@ async function findByGix(gix) {
   }
   return null;
 }
+
+// ─── Firebase Messaging Setup ───
+async function setupNotifications() {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      console.log('Permissão para notificações concedida.');
+      
+      // Obtém o token usando a sua Key Pair fornecida
+      const token = await getToken(messaging, { 
+        vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE' 
+      });
+      
+      if (token) {
+        console.log('Token FCM gerado:', token);
+        // Próximo passo: Salvar este token no Firestore atrelado ao usuário para enviar direto a ele
+      } else {
+        console.log('Nenhum token gerado. Verifique as configurações do console do Firebase.');
+      }
+    } else {
+      console.log('Permissão de notificação negada pelo usuário.');
+    }
+  } catch (error) {
+    console.error('Erro ao configurar o Firebase Messaging:', error);
+  }
+}
+
+// Escuta notificações recebidas em primeiro plano (aba aberta e focada)
+onMessage(messaging, (payload) => {
+  console.log('Mensagem recebida em primeiro plano: ', payload);
+  if (payload.notification) {
+    alert(`📢 ${payload.notification.title}\n\n${payload.notification.body}`);
+  }
+});
 
 // ─── Intro ───
 function runIntro() {
@@ -184,7 +222,7 @@ function renderCart() {
     );
   }
 
-  document.getElementById('cart-total').textContent = cartTotalWithDiscount(); // Atualizado para mostrar o total correto na UI do carrinho se aplicável
+  document.getElementById('cart-total').textContent = cartTotalWithDiscount();
   document.getElementById('checkout-btn').disabled = cartTotal() === 0;
 }
 
@@ -416,7 +454,6 @@ async function doConfirmPayment() {
     document.getElementById('pay-success-nome').textContent  = loggedUser.nome;
     payShowStep('pay-step-success');
 
-    // Estado limpo de forma síncrona e correta após sucesso
     cart = {};
     appliedCoupon = null; 
     updateUI();
@@ -438,6 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
   runIntro();
   loadProducts();
   loadCoupons();
+  setupNotifications(); // Executa o setup de notificações Push na inicialização
 
   document.getElementById('cart-btn').addEventListener('click', openCart);
   document.getElementById('overlay').addEventListener('click', closeCart);
