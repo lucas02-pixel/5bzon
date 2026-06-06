@@ -49,22 +49,34 @@ async function findByGix(gix) {
 }
 
 // ─── Firebase Messaging Setup ───
+// ─── Firebase Messaging Setup ───
 async function setupNotifications() {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       console.log('Permissão para notificações concedida.');
       
-      // Obtém o token usando a sua Key Pair fornecida
+      // 1. Detecta o caminho base do GitHub Pages (ex: /banco-sulegal/)
+      const pathArray = window.location.pathname.split('/');
+      const repoName = pathArray[1] && pathArray[1] !== 'index.html' ? `/${pathArray[1]}` : '';
+      const swUrl = `${repoName}/firebase-messaging-sw.js`;
+
+      console.log('Registrando Service Worker em:', swUrl);
+
+      // 2. Registra o Service Worker manualmente
+      const registration = await navigator.serviceWorker.register(swUrl);
+      console.log('Service Worker registrado com sucesso para o escopo:', registration.scope);
+      
+      // 3. Obtém o token passando o registro manual para o Firebase
       const token = await getToken(messaging, { 
-        vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE' 
+        vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE',
+        serviceWorkerRegistration: registration // <--- IMPORTANTE
       });
       
       if (token) {
         console.log('Token FCM gerado:', token);
-        // Próximo passo: Salvar este token no Firestore atrelado ao usuário para enviar direto a ele
       } else {
-        console.log('Nenhum token gerado. Verifique as configurações do console do Firebase.');
+        console.log('Nenhum token gerado.');
       }
     } else {
       console.log('Permissão de notificação negada pelo usuário.');
