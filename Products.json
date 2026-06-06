@@ -3,21 +3,21 @@
     "id": 1,
     "name": "Quadrinhos Quadrados",
     "desc": "tirinhas engraçadas",
-    "price": 10,
+    "price": 1,
     "emoji": "📚"
   },
   {
     "id": 2,
-    "name": "pré-venda: album de figurinhas do ENDERWOOD",
+    "name": "album de figurinhas do ENDERWOOD",
     "desc": "o artista finalmente fez um bom desenho então aproveite pra comprar",
-    "price": 30,
+    "price": 20,
     "emoji": "📔"
   },
   {
     "id": 3,
-    "name": "pré-venda: pacotinho do album de figurinhas do ENDERWOOD",
+    "name": "pacotinho do album de figurinhas do ENDERWOOD",
     "desc": "três figurinhas aleatórias do album de figurinhas do album do ENDERWOOD, ",
-    "price": 3,
+    "price": 2,
     "emoji": "👜"
   }
 ]
