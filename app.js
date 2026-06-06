@@ -50,31 +50,29 @@ async function findByGix(gix) {
 
 // ─── Firebase Messaging Setup ───
 // ─── Firebase Messaging Setup ───
+// ─── Firebase Messaging Setup ───
 async function setupNotifications() {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       console.log('Permissão para notificações concedida.');
       
-      // 1. Detecta o caminho base do GitHub Pages (ex: /banco-sulegal/)
-      const pathArray = window.location.pathname.split('/');
-      const repoName = pathArray[1] && pathArray[1] !== 'index.html' ? `/${pathArray[1]}` : '';
-      const swUrl = `${repoName}/firebase-messaging-sw.js`;
+      // Força o navegador a buscar o arquivo no mesmo diretório do index.html
+      const swUrl = './firebase-messaging-sw.js';
+      console.log('Tentando registrar Service Worker em:', swUrl);
 
-      console.log('Registrando Service Worker em:', swUrl);
-
-      // 2. Registra o Service Worker manualmente
-      const registration = await navigator.serviceWorker.register(swUrl);
-      console.log('Service Worker registrado com sucesso para o escopo:', registration.scope);
+      // Registra manualmente definindo o escopo relativo correto
+      const registration = await navigator.serviceWorker.register(swUrl, { scope: './' });
+      console.log('Service Worker registrado com sucesso no escopo:', registration.scope);
       
-      // 3. Obtém o token passando o registro manual para o Firebase
+      // Passa esse registro manual diretamente para o Firebase conseguir o Token
       const token = await getToken(messaging, { 
         vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE',
-        serviceWorkerRegistration: registration // <--- IMPORTANTE
+        serviceWorkerRegistration: registration
       });
       
       if (token) {
-        console.log('Token FCM gerado:', token);
+        console.log('Token FCM gerado com sucesso:', token);
       } else {
         console.log('Nenhum token gerado.');
       }
@@ -85,14 +83,6 @@ async function setupNotifications() {
     console.error('Erro ao configurar o Firebase Messaging:', error);
   }
 }
-
-// Escuta notificações recebidas em primeiro plano (aba aberta e focada)
-onMessage(messaging, (payload) => {
-  console.log('Mensagem recebida em primeiro plano: ', payload);
-  if (payload.notification) {
-    alert(`📢 ${payload.notification.title}\n\n${payload.notification.body}`);
-  }
-});
 
 // ─── Intro ───
 function runIntro() {
