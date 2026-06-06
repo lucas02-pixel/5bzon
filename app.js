@@ -26,11 +26,11 @@ const GIX_LOJA = "SUL873302";
 const MAX_QTY  = 5;
 
 // ─── State ───
-let products    = [];
-let cart        = {};
-let loggedUser  = null; // { docId, gix, nome, saldo }
-let coupons     = [];   // lista de cupons carregados do JSON
-let appliedCoupon = null; // { code, type, value, desc }
+let products      = [];
+let cart          = {};
+let loggedUser    = null;
+let coupons       = [];
+let appliedCoupon = null;
 
 // ─── Helpers Firebase ───
 async function findByGix(gix) {
@@ -62,7 +62,6 @@ async function loadProducts() {
 // ─── Load coupons ───
 async function loadCoupons() {
   try {
-    // Carrega do mesmo repositório — coloque o coupons.json no seu GitHub também
     const res = await fetch('https://raw.githubusercontent.com/lucas02-pixel/5bzon/refs/heads/main/coupons.json');
     coupons = await res.json();
   } catch (e) {
@@ -128,7 +127,9 @@ function cartTotalWithDiscount() {
 
   let total;
   if (appliedCoupon.type === 'percent') {
-    total = raw - Math.floor(raw * appliedCoupon.value / 100);
+    // Math.ceil garante que o desconto sempre arredonda pra cima (favorece o cliente)
+    const desconto = Math.ceil(raw * appliedCoupon.value / 100);
+    total = raw - desconto;
   } else if (appliedCoupon.type === 'fixed') {
     total = raw - appliedCoupon.value;
   } else {
@@ -189,7 +190,7 @@ function renderCart() {
 }
 
 // ─── Drawer ───
-function openCart()  {
+function openCart() {
   document.getElementById('cart-drawer').classList.add('open');
   document.getElementById('overlay').classList.add('open');
 }
@@ -211,13 +212,12 @@ function showPayment() {
   closeCart();
   appliedCoupon = null;
 
-  // Reset campos de login
   document.getElementById('pay-gix-input').value   = '';
   document.getElementById('pay-senha-input').value = '';
   document.getElementById('pay-login-error').style.display = 'none';
   document.getElementById('pay-login-error').textContent   = '';
 
-  updatePayValorDisplay();
+  document.getElementById('pay-valor').textContent = cartTotal();
   payShowStep('pay-step-login');
   document.getElementById('payment-screen').classList.add('visible');
 }
@@ -225,11 +225,6 @@ function showPayment() {
 // ─── Hide Payment ───
 function hidePayment() {
   document.getElementById('payment-screen').classList.remove('visible');
-}
-
-// ─── Atualiza o valor exibido no header da tela de pagamento ───
-function updatePayValorDisplay() {
-  document.getElementById('pay-valor').textContent = cartTotal();
 }
 
 // ─── Login no pagamento ───
@@ -250,13 +245,12 @@ async function doPayLogin() {
   try {
     const result = await findByGix(gix);
 
-    if (!result)                        { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
-    if (result.data.senha !== senha)    { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
-    if (gix === GIX_LOJA.toUpperCase()){ errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
+    if (!result)                         { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
+    if (result.data.senha !== senha)     { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
+    if (gix === GIX_LOJA.toUpperCase()) { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
 
     loggedUser = { docId: result.id, gix, nome: result.id, saldo: result.data.saldo };
 
-    // Vai para etapa de cupom
     renderCouponStep();
     payShowStep('pay-step-coupon');
 
@@ -285,25 +279,25 @@ function doApplyCoupon() {
   const fbEl = document.getElementById('pay-coupon-feedback');
 
   if (!code) {
-    fbEl.textContent  = 'Digite um código de cupom';
-    fbEl.className    = 'pay-coupon-feedback error';
+    fbEl.textContent   = 'Digite um código de cupom';
+    fbEl.className     = 'pay-coupon-feedback error';
     fbEl.style.display = 'block';
     return;
   }
 
   const found = coupons.find(c => c.code.toUpperCase() === code);
   if (!found) {
-    appliedCoupon = null;
-    fbEl.textContent  = '❌ Cupom inválido';
-    fbEl.className    = 'pay-coupon-feedback error';
+    appliedCoupon      = null;
+    fbEl.textContent   = '❌ Cupom inválido';
+    fbEl.className     = 'pay-coupon-feedback error';
     fbEl.style.display = 'block';
     updateCouponSummary();
     return;
   }
 
-  appliedCoupon = found;
-  fbEl.textContent  = `✅ ${found.desc}`;
-  fbEl.className    = 'pay-coupon-feedback success';
+  appliedCoupon      = found;
+  fbEl.textContent   = `✅ ${found.desc}`;
+  fbEl.className     = 'pay-coupon-feedback success';
   fbEl.style.display = 'block';
   updateCouponSummary();
 }
@@ -312,8 +306,7 @@ function doApplyCoupon() {
 function doRemoveCoupon() {
   appliedCoupon = null;
   document.getElementById('pay-coupon-input').value = '';
-  const fbEl = document.getElementById('pay-coupon-feedback');
-  fbEl.style.display = 'none';
+  document.getElementById('pay-coupon-feedback').style.display = 'none';
   updateCouponSummary();
 }
 
@@ -323,13 +316,11 @@ function updateCouponSummary() {
   const total    = cartTotalWithDiscount();
   const discount = raw - total;
 
-  const summaryEl   = document.getElementById('pay-coupon-summary');
-  const originalEl  = document.getElementById('pay-coupon-original');
-  const discountEl  = document.getElementById('pay-coupon-discount-row');
-  const finalEl     = document.getElementById('pay-coupon-final');
+  document.getElementById('pay-coupon-original').textContent = raw + ' sulegais';
+  document.getElementById('pay-coupon-final').textContent    = total + ' sulegais';
 
-  originalEl.textContent = raw + ' sulegais';
-  finalEl.textContent    = total + ' sulegais';
+  const discountEl = document.getElementById('pay-coupon-discount-row');
+  const summaryEl  = document.getElementById('pay-coupon-summary');
 
   if (appliedCoupon && discount > 0) {
     discountEl.style.display = 'flex';
@@ -340,37 +331,36 @@ function updateCouponSummary() {
     summaryEl.classList.remove('has-discount');
   }
 
-  // botão remover
   document.getElementById('pay-remove-coupon-btn').style.display = appliedCoupon ? 'block' : 'none';
 }
 
 // ─── Avança do cupom para confirmação ───
 function doContinueFromCoupon() {
-  const total = cartTotalWithDiscount();
-
-  // preenche step de confirmação
-  document.getElementById('pay-user-name').textContent   = loggedUser.nome;
-  document.getElementById('pay-user-gix').textContent    = 'GIX: ' + loggedUser.gix;
-  document.getElementById('pay-user-saldo').textContent  = loggedUser.saldo + ' sulegais';
-  document.getElementById('pay-valor2').textContent      = total;
-
-  // linha de desconto na confirmação
   const raw      = cartTotal();
+  const total    = cartTotalWithDiscount();
   const discount = raw - total;
-  const confDiscRow = document.getElementById('pay-conf-discount-row');
+
+  document.getElementById('pay-user-name').textContent  = loggedUser.nome;
+  document.getElementById('pay-user-gix').textContent   = 'GIX: ' + loggedUser.gix;
+  document.getElementById('pay-user-saldo').textContent = loggedUser.saldo + ' sulegais';
+  document.getElementById('pay-valor2').textContent     = total;
+
+  const confDiscRow    = document.getElementById('pay-conf-discount-row');
+  const confOrigRow    = document.getElementById('pay-conf-original-row');
+
   if (appliedCoupon && discount > 0) {
-    confDiscRow.style.display = 'flex';
-    document.getElementById('pay-conf-discount-val').textContent = '−' + discount + ' sulegais (' + appliedCoupon.code + ')';
-    document.getElementById('pay-conf-original-row').style.display = 'flex';
-    document.getElementById('pay-conf-original-val').textContent = raw + ' sulegais';
+    confOrigRow.style.display  = 'flex';
+    confDiscRow.style.display  = 'flex';
+    document.getElementById('pay-conf-original-val').textContent  = raw + ' sulegais';
+    document.getElementById('pay-conf-discount-val').textContent  = '−' + discount + ' sulegais (' + appliedCoupon.code + ')';
   } else {
+    confOrigRow.style.display = 'none';
     confDiscRow.style.display = 'none';
-    document.getElementById('pay-conf-original-row').style.display = 'none';
   }
 
   const semSaldo = loggedUser.saldo < total;
-  document.getElementById('pay-saldo-warn').style.display = semSaldo ? 'block' : 'none';
-  document.getElementById('pay-confirm-btn').disabled     = semSaldo;
+  document.getElementById('pay-saldo-warn').style.display   = semSaldo ? 'block' : 'none';
+  document.getElementById('pay-confirm-btn').disabled        = semSaldo;
   document.getElementById('pay-paying-error').style.display = 'none';
 
   payShowStep('pay-step-paying');
@@ -378,13 +368,13 @@ function doContinueFromCoupon() {
 
 // ─── Confirmar pagamento ───
 async function doConfirmPayment() {
-  const total  = cartTotalWithDiscount();
-  const btn    = document.getElementById('pay-confirm-btn');
-  const errEl  = document.getElementById('pay-paying-error');
+  const total = cartTotalWithDiscount(); // ← sempre com desconto
+  const btn   = document.getElementById('pay-confirm-btn');
+  const errEl = document.getElementById('pay-paying-error');
 
-  errEl.style.display  = 'none';
-  btn.disabled         = true;
-  btn.textContent      = 'Processando...';
+  errEl.style.display = 'none';
+  btn.disabled        = true;
+  btn.textContent     = 'Processando...';
 
   try {
     const lojaResult = await findByGix(GIX_LOJA);
