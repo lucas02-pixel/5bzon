@@ -7,26 +7,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
   <!-- Google Analytics -->
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-Q609SLT9TH"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q609SLT9TH"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-Q609SLT9TH');
+  </script>
 
-  gtag('config', 'G-Q609SLT9TH');
-</script>
-
- <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "a1f2d0a0-85f3-41b4-ab1b-b204ff3952a6",
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({ appId: "a1f2d0a0-85f3-41b4-ab1b-b204ff3952a6" });
     });
-  });
-</script>
-  
+  </script>
 </head>
 <body>
 
@@ -62,8 +57,7 @@
       <span>6.6</span><br/>
       chegou
     </div>
-    <div class="hero-desc">
-     Os produtos estão + baratos    </div>
+    <div class="hero-desc">Os produtos estão + baratos</div>
   </section>
 
   <div class="section-label">// produtos disponíveis</div>
@@ -97,7 +91,7 @@
 <div id="payment-screen">
   <div class="payment-container">
     <div class="pay-logo">5bzon</div>
-    
+
     <div class="pay-card">
 
       <!-- STEP 1: Login GIX -->
@@ -120,13 +114,47 @@
           <input id="pay-senha-input" type="password" placeholder="Sua senha" class="pay-input"/>
         </div>
 
-        <div class="pay-error" id="pay-login-error"></div>
+        <div class="pay-error" id="pay-login-error" style="display:none"></div>
 
         <button class="pay-action-btn" id="pay-login-btn">Entrar →</button>
         <button class="pay-back-btn" id="pay-back-login">← Voltar ao carrinho</button>
       </div>
 
-      <!-- STEP 2: Confirmar pagamento -->
+      <!-- STEP 2: Cupom -->
+      <div id="pay-step-coupon" style="display:none">
+        <div class="pay-step-title">
+          <span class="pay-step-tag">// tem um cupom?</span>
+          <div class="pay-step-head">Código de desconto</div>
+        </div>
+
+        <div class="pay-coupon-input-row">
+          <input id="pay-coupon-input" type="text" placeholder="ex: 66OFF" class="pay-input pay-coupon-field"/>
+          <button class="pay-coupon-apply-btn" id="pay-apply-coupon-btn">Aplicar</button>
+        </div>
+
+        <div class="pay-coupon-feedback" id="pay-coupon-feedback" style="display:none"></div>
+        <button class="pay-remove-coupon-btn" id="pay-remove-coupon-btn" style="display:none">✕ Remover cupom</button>
+
+        <!-- Resumo do preço -->
+        <div class="pay-coupon-summary" id="pay-coupon-summary">
+          <div class="pay-coupon-summary-row">
+            <span>Subtotal</span>
+            <span id="pay-coupon-original">0 sulegais</span>
+          </div>
+          <div class="pay-coupon-summary-row discount-row" id="pay-coupon-discount-row" style="display:none">
+            <span>Desconto</span>
+            <span id="pay-coupon-discount-val" class="discount-val">−0 sulegais</span>
+          </div>
+          <div class="pay-coupon-summary-row total-row-coupon">
+            <span>Total</span>
+            <span id="pay-coupon-final" class="final-val">0 sulegais</span>
+          </div>
+        </div>
+
+        <button class="pay-action-btn" id="pay-skip-coupon-btn">Continuar →</button>
+      </div>
+
+      <!-- STEP 3: Confirmar pagamento -->
       <div id="pay-step-paying" style="display:none">
         <div class="pay-step-title">
           <span class="pay-step-tag">// confirmar compra</span>
@@ -143,8 +171,18 @@
         </div>
 
         <div class="pay-confirm-box">
+          <!-- linha original (só aparece se tiver desconto) -->
+          <div class="pay-confirm-row" id="pay-conf-original-row" style="display:none">
+            <span class="pay-confirm-key">Subtotal</span>
+            <span class="pay-confirm-val muted" id="pay-conf-original-val">0</span>
+          </div>
+          <!-- linha de desconto -->
+          <div class="pay-confirm-row" id="pay-conf-discount-row" style="display:none">
+            <span class="pay-confirm-key">Desconto</span>
+            <span class="pay-confirm-val discount-inline" id="pay-conf-discount-val">—</span>
+          </div>
           <div class="pay-confirm-row">
-            <span class="pay-confirm-key">Valor</span>
+            <span class="pay-confirm-key">Total</span>
             <span class="pay-confirm-val accent" id="pay-valor2">0</span>
           </div>
           <div class="pay-confirm-row">
@@ -156,13 +194,13 @@
         <div class="pay-error" id="pay-saldo-warn" style="display:none">
           ⚠️ Saldo insuficiente para esta compra.
         </div>
-
         <div class="pay-error" id="pay-paying-error" style="display:none"></div>
 
         <button class="pay-action-btn" id="pay-confirm-btn">Confirmar pagamento</button>
+        <button class="pay-back-btn" id="pay-back-coupon">← Voltar</button>
       </div>
 
-      <!-- STEP 3: Sucesso -->
+      <!-- STEP 4: Sucesso -->
       <div id="pay-step-success" style="display:none; text-align:center; padding:20px 0;">
         <div style="font-size:72px; line-height:1.2; margin-bottom:16px">✅</div>
         <div class="pay-success-title">Compra confirmada!</div>
@@ -173,7 +211,7 @@
         <button class="pay-action-btn" id="pay-new-btn" style="margin-top:28px">Fazer nova compra</button>
       </div>
 
-      <!-- STEP 4: Erro geral -->
+      <!-- STEP 5: Erro geral -->
       <div id="pay-step-error" style="display:none; text-align:center; padding:20px 0;">
         <div style="font-size:48px; margin-bottom:16px">⚠️</div>
         <div class="pay-error-title">Erro de conexão</div>
