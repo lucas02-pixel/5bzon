@@ -91,7 +91,15 @@ function runIntro() {
     document.getElementById('site').classList.add('visible');
   }, 2000);
 }
-
+// 1. Pede permissão ao usuário (se ainda não tiver)
+Notification.requestPermission().then(permission => {
+  if (permission === "granted") {
+    // 2. Dispara a notificação imediatamente
+    new Notification("Nova mensagem!", {
+      body: "bem vindo ao 5bzon.",
+        });
+  }
+});
 // ─── Load products ───
 async function loadProducts() {
   const res = await fetch('https://raw.githubusercontent.com/lucas02-pixel/5bzon/refs/heads/main/Products.json');
