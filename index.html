@@ -36,6 +36,133 @@
     <span class="intro-letter">N</span>
   </div>
 </div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Popup Bonito</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f4f4f4;
+    }
+
+    /* Botão para abrir o popup */
+    .open-btn {
+        display: inline-block;
+        padding: 12px 20px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 50px;
+        transition: background 0.3s;
+    }
+    .open-btn:hover {
+        background: #45a049;
+    }
+
+    /* Fundo escurecido */
+    .modal-overlay {
+        display: none; /* escondido por padrão */
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 999;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    /* Caixa do popup */
+    .modal {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+        position: relative;
+    }
+
+    /* Botão de fechar */
+    .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+        transition: color 0.3s;
+    }
+    .close-btn:hover {
+        color: #000;
+    }
+
+    /* Animações */
+    @keyframes fadeIn {
+        from {opacity: 0;}
+        to {opacity: 1;}
+    }
+    @keyframes slideIn {
+        from {transform: translateY(-30px); opacity: 0;}
+        to {transform: translateY(0); opacity: 1;}
+    }
+</style>
+</head>
+<body>
+
+<!-- Botão para abrir -->
+<button class="open-btn" id="openModal">Abrir Popup</button>
+
+<!-- Estrutura do popup -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <span class="close-btn" id="closeModal">&times;</span>
+        <h2>Bem-vindo!</h2>
+        <p>Use o cupom 66OF e ganhe 10% de desconto.</p>
+        <button class="open-btn" id="okBtn">OK</button>
+    </div>
+</div>
+
+<script>
+    // Seleciona elementos
+    const openModal = document.getElementById('openModal');
+    const closeModal = document.getElementById('closeModal');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const okBtn = document.getElementById('okBtn');
+
+    // Abrir popup
+    openModal.addEventListener('click', () => {
+        modalOverlay.style.display = 'flex';
+    });
+
+    // Fechar popup
+    closeModal.addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    // Fechar ao clicar fora da caixa
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
+
+    // Botão OK fecha também
+    okBtn.addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+</script>
+
+</body>
+</html>
 
 <!-- ─── SITE ─── -->
 <div id="site">
