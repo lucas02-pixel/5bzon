@@ -6,7 +6,6 @@
   <title>5bzon</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
-  <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q609SLT9TH"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -25,7 +24,6 @@
 </head>
 <body>
 
-<!-- ─── INTRO ─── -->
 <div id="intro">
   <div class="intro-scanline"></div>
   <div class="intro-logo">
@@ -36,12 +34,7 @@
     <span class="intro-letter">N</span>
   </div>
 </div>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Popup Bonito</title>
+
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -49,7 +42,7 @@
         background: #f4f4f4;
     }
 
-    /* Botão para abrir o popup */
+    /* Botão base para o OK do popup */
     .open-btn {
         display: inline-block;
         padding: 12px 20px;
@@ -59,7 +52,7 @@
         border-radius: 6px;
         cursor: pointer;
         font-size: 16px;
-        margin: 50px;
+        margin-top: 15px;
         transition: background 0.3s;
     }
     .open-btn:hover {
@@ -68,7 +61,7 @@
 
     /* Fundo escurecido */
     .modal-overlay {
-        display: none; /* escondido por padrão */
+        display: none; /* escondido por padrão, mudará para flex via JS */
         position: fixed;
         top: 0; left: 0;
         width: 100%; height: 100%;
@@ -115,13 +108,7 @@
         to {transform: translateY(0); opacity: 1;}
     }
 </style>
-</head>
-<body>
 
-<!-- Botão para abrir -->
-<button class="open-btn" id="openModal">Abrir Popup</button>
-
-<!-- Estrutura do popup -->
 <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
         <span class="close-btn" id="closeModal">&times;</span>
@@ -133,22 +120,21 @@
 
 <script>
     // Seleciona elementos
-    const openModal = document.getElementById('openModal');
     const closeModal = document.getElementById('closeModal');
     const modalOverlay = document.getElementById('modalOverlay');
     const okBtn = document.getElementById('okBtn');
 
-    // Abrir popup
-    openModal.addEventListener('click', () => {
+    // Abre o popup automaticamente assim que a página carregar totalmente
+    window.onload = () => {
         modalOverlay.style.display = 'flex';
-    });
+    };
 
-    // Fechar popup
+    // Fechar popup no 'X'
     closeModal.addEventListener('click', () => {
         modalOverlay.style.display = 'none';
     });
 
-    // Fechar ao clicar fora da caixa
+    // Fechar ao clicar fora da caixa branca
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) {
             modalOverlay.style.display = 'none';
@@ -161,10 +147,6 @@
     });
 </script>
 
-</body>
-</html>
-
-<!-- ─── SITE ─── -->
 <div id="site">
 
   <header>
@@ -192,10 +174,8 @@
 
 </div>
 
-<!-- ─── OVERLAY ─── -->
 <div class="overlay" id="overlay"></div>
 
-<!-- ─── CART DRAWER ─── -->
 <div class="cart-drawer" id="cart-drawer">
   <div class="drawer-header">
     <div class="drawer-title">Carrinho</div>
@@ -214,14 +194,12 @@
   </div>
 </div>
 
-<!-- ─── PAYMENT SCREEN ─── -->
 <div id="payment-screen">
   <div class="payment-container">
     <div class="pay-logo">5bzon</div>
 
     <div class="pay-card">
 
-      <!-- STEP 1: Login GIX -->
       <div id="pay-step-login">
         <div class="pay-step-title">
           <span class="pay-step-tag">// acesse sua conta</span>
@@ -247,7 +225,6 @@
         <button class="pay-back-btn" id="pay-back-login">← Voltar ao carrinho</button>
       </div>
 
-      <!-- STEP 2: Cupom -->
       <div id="pay-step-coupon" style="display:none">
         <div class="pay-step-title">
           <span class="pay-step-tag">// tem um cupom?</span>
@@ -262,7 +239,6 @@
         <div class="pay-coupon-feedback" id="pay-coupon-feedback" style="display:none"></div>
         <button class="pay-remove-coupon-btn" id="pay-remove-coupon-btn" style="display:none">✕ Remover cupom</button>
 
-        <!-- Resumo do preço -->
         <div class="pay-coupon-summary" id="pay-coupon-summary">
           <div class="pay-coupon-summary-row">
             <span>Subtotal</span>
@@ -281,7 +257,6 @@
         <button class="pay-action-btn" id="pay-skip-coupon-btn">Continuar →</button>
       </div>
 
-      <!-- STEP 3: Confirmar pagamento -->
       <div id="pay-step-paying" style="display:none">
         <div class="pay-step-title">
           <span class="pay-step-tag">// confirmar compra</span>
@@ -298,12 +273,10 @@
         </div>
 
         <div class="pay-confirm-box">
-          <!-- linha original (só aparece se tiver desconto) -->
           <div class="pay-confirm-row" id="pay-conf-original-row" style="display:none">
             <span class="pay-confirm-key">Subtotal</span>
             <span class="pay-confirm-val muted" id="pay-conf-original-val">0</span>
           </div>
-          <!-- linha de desconto -->
           <div class="pay-confirm-row" id="pay-conf-discount-row" style="display:none">
             <span class="pay-confirm-key">Desconto</span>
             <span class="pay-confirm-val discount-inline" id="pay-conf-discount-val">—</span>
@@ -327,7 +300,6 @@
         <button class="pay-back-btn" id="pay-back-coupon">← Voltar</button>
       </div>
 
-      <!-- STEP 4: Sucesso -->
       <div id="pay-step-success" style="display:none; text-align:center; padding:20px 0;">
         <div style="font-size:72px; line-height:1.2; margin-bottom:16px">✅</div>
         <div class="pay-success-title">Compra confirmada!</div>
@@ -338,7 +310,6 @@
         <button class="pay-action-btn" id="pay-new-btn" style="margin-top:28px">Fazer nova compra</button>
       </div>
 
-      <!-- STEP 5: Erro geral -->
       <div id="pay-step-error" style="display:none; text-align:center; padding:20px 0;">
         <div style="font-size:48px; margin-bottom:16px">⚠️</div>
         <div class="pay-error-title">Erro de conexão</div>
