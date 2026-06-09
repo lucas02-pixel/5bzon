@@ -3,6 +3,12 @@
     "code": "66OFF",
     "type": "percent",
     "value": 10,
-    "desc": "10% de desconto — promoção 6.6"
+    "desc": "10% de desconto "
+  },
+  {
+    "code": "NOITE",
+    "type": "percent",
+    "value": 5,
+    "desc": "cupom de 5% de desconto"
   }
 ]
