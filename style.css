@@ -475,3 +475,137 @@ header {
   .pay-coupon-input-row { flex-direction: column; }
   .pay-coupon-apply-btn { padding: 12px; }
 }
+/* =========================
+   LIQUID GLASS BOTTOM BAR
+========================= */
+
+.bottom-nav{
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: min(420px, calc(100% - 24px));
+
+  height: 70px;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  z-index: 999;
+
+  border-radius: 999px;
+
+  background: rgba(255,255,255,0.22);
+
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+
+  border: 1px solid rgba(255,255,255,0.35);
+
+  box-shadow:
+  0 8px 32px rgba(0,0,0,.15),
+  inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+.bottom-nav::before{
+  content:"";
+  position:absolute;
+  inset:0;
+
+  border-radius:999px;
+
+  background:
+  linear-gradient(
+    180deg,
+    rgba(255,255,255,.35),
+    rgba(255,255,255,.05)
+  );
+
+  pointer-events:none;
+}
+
+.nav-item{
+  position: relative;
+
+  width: 120px;
+  height: 54px;
+
+  border:none;
+  background:transparent;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+
+  cursor:pointer;
+
+  border-radius:20px;
+
+  color:#1f2937;
+
+  transition:.25s;
+}
+
+.nav-item span{
+  font-size:22px;
+}
+
+.nav-item small{
+  font-size:12px;
+  font-weight:700;
+}
+
+.nav-item.active{
+  background:rgba(22,163,74,.14);
+
+  color:#16a34a;
+}
+
+.nav-item:hover{
+  transform:translateY(-2px);
+}
+
+.nav-cart-count{
+  position:absolute;
+
+  top:6px;
+  right:18px;
+
+  min-width:18px;
+  height:18px;
+
+  padding:0 5px;
+
+  border-radius:999px;
+
+  background:#16a34a;
+  color:white;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  font-size:11px;
+  font-weight:700;
+}
+
+/* espaço para não esconder produtos */
+.products-grid{
+  padding-bottom:140px;
+}
+
+@media(max-width:600px){
+
+  .bottom-nav{
+      bottom:14px;
+      height:65px;
+  }
+
+  .nav-item{
+      width:100px;
+  }
+
+}
