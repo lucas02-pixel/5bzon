@@ -1,5 +1,7 @@
 // ─── Firebase ───
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+
 import {
   getFirestore,
   collection,
@@ -9,7 +11,7 @@ import {
   addDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-// Adicionado modulo do Messaging
+
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging.js";
 
 const firebaseConfig = {
@@ -23,7 +25,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
-// Inicializa o Messaging
 const messaging = getMessaging(app);
 
 const GIX_LOJA = "SUL873302";
@@ -49,35 +50,21 @@ async function findByGix(gix) {
 }
 
 // ─── Firebase Messaging Setup ───
-// ─── Firebase Messaging Setup ───
-// ─── Firebase Messaging Setup ───
 async function setupNotifications() {
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      console.log('Permissão para notificações concedida.');
-      
-      // Força o navegador a buscar o arquivo no mesmo diretório do index.html
       const swUrl = './firebase-messaging-sw.js';
-      console.log('Tentando registrar Service Worker em:', swUrl);
-
-      // Registra manualmente definindo o escopo relativo correto
       const registration = await navigator.serviceWorker.register(swUrl, { scope: './' });
-      console.log('Service Worker registrado com sucesso no escopo:', registration.scope);
-      
-      // Passa esse registro manual diretamente para o Firebase conseguir o Token
-      const token = await getToken(messaging, { 
+
+      const token = await getToken(messaging, {
         vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE',
         serviceWorkerRegistration: registration
       });
-      
+
       if (token) {
         console.log('Token FCM gerado com sucesso:', token);
-      } else {
-        console.log('Nenhum token gerado.');
       }
-    } else {
-      console.log('Permissão de notificação negada pelo usuário.');
     }
   } catch (error) {
     console.error('Erro ao configurar o Firebase Messaging:', error);
@@ -91,15 +78,19 @@ function runIntro() {
     document.getElementById('site').classList.add('visible');
   }, 2000);
 }
-// 1. Pede permissão ao usuário (se ainda não tiver)
-Notification.requestPermission().then(permission => {
-  if (permission === "granted") {
-    // 2. Dispara a notificação imediatamente
-    new Notification("Nova mensagem!", {
-      body: "bem vindo ao 5bzon.",
-        });
-  }
-});
+
+// ─── Notificação de boas-vindas ───
+function requestWelcomeNotification() {
+  if (!('Notification' in window)) return;
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      new Notification("Nova mensagem!", {
+        body: "Bem-vindo ao 5bzon."
+      });
+    }
+  });
+}
+
 // ─── Load products ───
 async function loadProducts() {
   const res = await fetch('https://raw.githubusercontent.com/lucas02-pixel/5bzon/refs/heads/main/Products.json');
@@ -200,11 +191,14 @@ function updateCartCount() {
 
 // ─── Render Cart ───
 function renderCart() {
-  const container = document.getElementById('cart-items');
-  const entries   = Object.entries(cart).filter(([, q]) => q > 0);
+  const container   = document.getElementById('cart-items');
+  const checkoutBtn = document.getElementById('checkout-btn');
+  const entries     = Object.entries(cart).filter(([, q]) => q > 0);
 
   if (entries.length === 0) {
     container.innerHTML = '<div class="cart-empty">🛒<br/>Carrinho vazio.<br/>Adicione uns quadrinhos aí!</div>';
+    // Desabilita o botão quando carrinho está vazio
+    if (checkoutBtn) checkoutBtn.disabled = true;
   } else {
     container.innerHTML = '';
     entries.forEach(([id, qty]) => {
@@ -230,10 +224,11 @@ function renderCart() {
         changeQty(parseInt(btn.dataset.id), parseInt(btn.dataset.delta))
       )
     );
+    // Habilita o botão quando há itens
+    if (checkoutBtn) checkoutBtn.disabled = false;
   }
 
   document.getElementById('cart-total').textContent = cartTotalWithDiscount();
-  document.getElementById('checkout-btn').disabled = cartTotal() === 0;
 }
 
 // ─── Drawer ───
@@ -256,6 +251,9 @@ function payShowStep(id) {
 
 // ─── Show Payment ───
 function showPayment() {
+  // Só abre se o carrinho tiver itens
+  if (cartTotal() === 0) return;
+
   closeCart();
   appliedCoupon = null;
 
@@ -292,11 +290,11 @@ async function doPayLogin() {
   try {
     const result = await findByGix(gix);
 
-    if (!result)                 { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
-    if (result.data.senha !== senha)     { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
-    if (gix === GIX_LOJA.toUpperCase()) { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
+    if (!result)                             { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
+    if (result.data.senha !== senha)         { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
+    if (gix === GIX_LOJA.toUpperCase())      { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
 
-    loggedUser = { docId: result.id, gix, nome: result.id, saldo: result.data.saldo };
+    loggedUser = { docId: result.id, gix, nome: result.data.nome || result.id, saldo: result.data.saldo };
 
     renderCouponStep();
     payShowStep('pay-step-coupon');
@@ -392,14 +390,14 @@ function doContinueFromCoupon() {
   document.getElementById('pay-user-saldo').textContent = loggedUser.saldo + ' sulegais';
   document.getElementById('pay-valor2').textContent     = total;
 
-  const confDiscRow    = document.getElementById('pay-conf-discount-row');
-  const confOrigRow    = document.getElementById('pay-conf-original-row');
+  const confDiscRow = document.getElementById('pay-conf-discount-row');
+  const confOrigRow = document.getElementById('pay-conf-original-row');
 
   if (appliedCoupon && discount > 0) {
-    confOrigRow.style.display  = 'flex';
-    confDiscRow.style.display  = 'flex';
-    document.getElementById('pay-conf-original-val').textContent  = raw + ' sulegais';
-    document.getElementById('pay-conf-discount-val').textContent  = '−' + discount + ' sulegais (' + appliedCoupon.code + ')';
+    confOrigRow.style.display = 'flex';
+    confDiscRow.style.display = 'flex';
+    document.getElementById('pay-conf-original-val').textContent = raw + ' sulegais';
+    document.getElementById('pay-conf-discount-val').textContent = '−' + discount + ' sulegais (' + appliedCoupon.code + ')';
   } else {
     confOrigRow.style.display = 'none';
     confDiscRow.style.display = 'none';
@@ -415,7 +413,7 @@ function doContinueFromCoupon() {
 
 // ─── Confirmar pagamento ───
 async function doConfirmPayment() {
-  const total = cartTotalWithDiscount(); 
+  const total = cartTotalWithDiscount();
   const btn   = document.getElementById('pay-confirm-btn');
   const errEl = document.getElementById('pay-paying-error');
 
@@ -465,7 +463,7 @@ async function doConfirmPayment() {
     payShowStep('pay-step-success');
 
     cart = {};
-    appliedCoupon = null; 
+    appliedCoupon = null;
     updateUI();
 
   } catch (e) {
@@ -485,12 +483,21 @@ document.addEventListener('DOMContentLoaded', () => {
   runIntro();
   loadProducts();
   loadCoupons();
-  setupNotifications(); // Executa o setup de notificações Push na inicialização
+  requestWelcomeNotification();
+  setupNotifications();
 
   document.getElementById('cart-btn').addEventListener('click', openCart);
   document.getElementById('overlay').addEventListener('click', closeCart);
   document.getElementById('close-drawer').addEventListener('click', closeCart);
-  document.getElementById('checkout-btn').addEventListener('click', showPayment);
+
+  // ── Botão Finalizar Compra ──
+  const checkoutBtn = document.getElementById('checkout-btn');
+  checkoutBtn.disabled = true; // começa desabilitado até ter itens
+  checkoutBtn.addEventListener('click', () => {
+    if (cartTotal() > 0) {
+      showPayment();
+    }
+  });
 
   // Step login
   document.getElementById('pay-login-btn').addEventListener('click', doPayLogin);
@@ -524,34 +531,25 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartCount();
   renderCart();
 });
+
+// ─── Nav tabs ───
 const homeTab = document.getElementById("home-tab");
 const cartTab = document.getElementById("cart-tab");
 
 homeTab.addEventListener("click", () => {
-
   homeTab.classList.add("active");
   cartTab.classList.remove("active");
-
   closeCart();
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
 cartTab.addEventListener("click", () => {
-
   cartTab.classList.add("active");
   homeTab.classList.remove("active");
-
   openCart();
 });
 
-document
-.getElementById("overlay")
-.addEventListener("click", () => {
-
+document.getElementById("overlay").addEventListener("click", () => {
   homeTab.classList.add("active");
   cartTab.classList.remove("active");
 });
