@@ -524,3 +524,34 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartCount();
   renderCart();
 });
+const homeTab = document.getElementById("home-tab");
+const cartTab = document.getElementById("cart-tab");
+
+homeTab.addEventListener("click", () => {
+
+  homeTab.classList.add("active");
+  cartTab.classList.remove("active");
+
+  closeCart();
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+});
+
+cartTab.addEventListener("click", () => {
+
+  cartTab.classList.add("active");
+  homeTab.classList.remove("active");
+
+  openCart();
+});
+
+document
+.getElementById("overlay")
+.addEventListener("click", () => {
+
+  homeTab.classList.add("active");
+  cartTab.classList.remove("active");
+});
