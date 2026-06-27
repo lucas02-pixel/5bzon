@@ -12,7 +12,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging.js";
+import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXFhRZ_Byp40-sIxaNkyICoe066p6J04w",
@@ -56,15 +56,11 @@ async function setupNotifications() {
     if (permission === 'granted') {
       const swUrl = './firebase-messaging-sw.js';
       const registration = await navigator.serviceWorker.register(swUrl, { scope: './' });
-
       const token = await getToken(messaging, {
         vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE',
         serviceWorkerRegistration: registration
       });
-
-      if (token) {
-        console.log('Token FCM gerado com sucesso:', token);
-      }
+      if (token) console.log('Token FCM:', token);
     }
   } catch (error) {
     console.error('Erro ao configurar o Firebase Messaging:', error);
@@ -84,9 +80,7 @@ function requestWelcomeNotification() {
   if (!('Notification' in window)) return;
   Notification.requestPermission().then(permission => {
     if (permission === "granted") {
-      new Notification("Nova mensagem!", {
-        body: "Bem-vindo ao 5bzon."
-      });
+      new Notification("Nova mensagem!", { body: "Bem-vindo ao 5bzon." });
     }
   });
 }
@@ -143,7 +137,6 @@ function addToCart(id) {
   updateUI();
 }
 
-// ─── Change Qty ───
 function changeQty(id, delta) {
   const qty = (cart[id] || 0) + delta;
   if (qty <= 0) delete cart[id];
@@ -151,7 +144,6 @@ function changeQty(id, delta) {
   updateUI();
 }
 
-// ─── Cart Total (bruto, sem cupom) ───
 function cartTotal() {
   return Object.entries(cart).reduce((sum, [id, qty]) => {
     const p = products.find(x => x.id === parseInt(id));
@@ -159,11 +151,9 @@ function cartTotal() {
   }, 0);
 }
 
-// ─── Total com desconto aplicado ───
 function cartTotalWithDiscount() {
   const raw = cartTotal();
   if (!appliedCoupon) return raw;
-
   let total;
   if (appliedCoupon.type === 'percent') {
     const desconto = Math.ceil(raw * appliedCoupon.value / 100);
@@ -176,20 +166,17 @@ function cartTotalWithDiscount() {
   return Math.max(0, total);
 }
 
-// ─── Update UI ───
 function updateUI() {
   renderProducts();
   renderCart();
   updateCartCount();
 }
 
-// ─── Update Cart Count ───
 function updateCartCount() {
   const total = Object.values(cart).reduce((a, b) => a + b, 0);
   document.getElementById('cart-count').textContent = total;
 }
 
-// ─── Render Cart ───
 function renderCart() {
   const container   = document.getElementById('cart-items');
   const checkoutBtn = document.getElementById('checkout-btn');
@@ -234,12 +221,13 @@ function openCart() {
   document.getElementById('cart-drawer').classList.add('open');
   document.getElementById('overlay').classList.add('open');
 }
+
 function closeCart() {
   document.getElementById('cart-drawer').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
 }
 
-// ─── Payment screen steps ───
+// ─── Payment steps ───
 function payShowStep(id) {
   ['pay-step-login', 'pay-step-coupon', 'pay-step-paying', 'pay-step-success', 'pay-step-error']
     .forEach(s => {
@@ -247,29 +235,23 @@ function payShowStep(id) {
     });
 }
 
-// ─── Show Payment ───
 function showPayment() {
   if (cartTotal() === 0) return;
-
   closeCart();
   appliedCoupon = null;
-
   document.getElementById('pay-gix-input').value   = '';
   document.getElementById('pay-senha-input').value = '';
   document.getElementById('pay-login-error').style.display = 'none';
   document.getElementById('pay-login-error').textContent   = '';
-
   document.getElementById('pay-valor').textContent = cartTotal();
   payShowStep('pay-step-login');
   document.getElementById('payment-screen').classList.add('visible');
 }
 
-// ─── Hide Payment ───
 function hidePayment() {
   document.getElementById('payment-screen').classList.remove('visible');
 }
 
-// ─── Login no pagamento ───
 async function doPayLogin() {
   const gix   = document.getElementById('pay-gix-input').value.trim().toUpperCase();
   const senha = document.getElementById('pay-senha-input').value.trim();
@@ -286,16 +268,13 @@ async function doPayLogin() {
 
   try {
     const result = await findByGix(gix);
-
-    if (!result)                             { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
-    if (result.data.senha !== senha)         { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
-    if (gix === GIX_LOJA.toUpperCase())      { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
+    if (!result)                        { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
+    if (result.data.senha !== senha)    { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
+    if (gix === GIX_LOJA.toUpperCase()){ errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
 
     loggedUser = { docId: result.id, gix, nome: result.data.nome || result.id, saldo: result.data.saldo };
-
     renderCouponStep();
     payShowStep('pay-step-coupon');
-
   } catch (e) {
     console.error(e);
     errEl.textContent   = 'Erro de conexão. Tente novamente.';
@@ -306,7 +285,6 @@ async function doPayLogin() {
   }
 }
 
-// ─── Renderiza a etapa de cupom ───
 function renderCouponStep() {
   document.getElementById('pay-coupon-input').value = '';
   document.getElementById('pay-coupon-feedback').style.display = 'none';
@@ -315,7 +293,6 @@ function renderCouponStep() {
   updateCouponSummary();
 }
 
-// ─── Aplica o cupom ───
 function doApplyCoupon() {
   const code = document.getElementById('pay-coupon-input').value.trim().toUpperCase();
   const fbEl = document.getElementById('pay-coupon-feedback');
@@ -344,7 +321,6 @@ function doApplyCoupon() {
   updateCouponSummary();
 }
 
-// ─── Remove cupom ───
 function doRemoveCoupon() {
   appliedCoupon = null;
   document.getElementById('pay-coupon-input').value = '';
@@ -352,7 +328,6 @@ function doRemoveCoupon() {
   updateCouponSummary();
 }
 
-// ─── Atualiza resumo de preço na etapa de cupom ───
 function updateCouponSummary() {
   const raw      = cartTotal();
   const total    = cartTotalWithDiscount();
@@ -376,7 +351,6 @@ function updateCouponSummary() {
   document.getElementById('pay-remove-coupon-btn').style.display = appliedCoupon ? 'block' : 'none';
 }
 
-// ─── Avança do cupom para confirmação ───
 function doContinueFromCoupon() {
   const raw      = cartTotal();
   const total    = cartTotalWithDiscount();
@@ -408,7 +382,6 @@ function doContinueFromCoupon() {
   payShowStep('pay-step-paying');
 }
 
-// ─── Confirmar pagamento ───
 async function doConfirmPayment() {
   const total = cartTotalWithDiscount();
   const btn   = document.getElementById('pay-confirm-btn');
@@ -428,12 +401,9 @@ async function doConfirmPayment() {
     await runTransaction(db, async (t) => {
       const userSnap = await t.get(userRef);
       const lojaSnap = await t.get(lojaRef);
-
       if (!userSnap.exists() || !lojaSnap.exists()) throw new Error('Conta não encontrada');
-
       const saldoUser = userSnap.data().saldo;
       if (saldoUser < total) throw new Error('Saldo insuficiente');
-
       t.update(userRef, { saldo: saldoUser - total });
       t.update(lojaRef, { saldo: lojaSnap.data().saldo + total });
     });
@@ -475,7 +445,7 @@ async function doConfirmPayment() {
   }
 }
 
-// ─── Init ───
+// ─── Init — TUDO dentro do DOMContentLoaded ───
 document.addEventListener('DOMContentLoaded', () => {
   runIntro();
   loadProducts();
@@ -483,27 +453,42 @@ document.addEventListener('DOMContentLoaded', () => {
   requestWelcomeNotification();
   setupNotifications();
 
-  // ── Overlay fecha o carrinho ──
+  // Nav tabs
+  const homeTab = document.getElementById("home-tab");
+  const cartTab = document.getElementById("cart-tab");
+
+  homeTab.addEventListener("click", () => {
+    homeTab.classList.add("active");
+    cartTab.classList.remove("active");
+    closeCart();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  cartTab.addEventListener("click", () => {
+    cartTab.classList.add("active");
+    homeTab.classList.remove("active");
+    openCart();
+  });
+
+  // Overlay
   document.getElementById('overlay').addEventListener('click', () => {
     closeCart();
     homeTab.classList.add("active");
     cartTab.classList.remove("active");
   });
 
-  // ── Botão Finalizar Compra ──
+  // Botão Finalizar Compra
   const checkoutBtn = document.getElementById('checkout-btn');
   checkoutBtn.disabled = true;
   checkoutBtn.addEventListener('click', () => {
-    if (cartTotal() > 0) {
-      showPayment();
-    }
+    if (cartTotal() > 0) showPayment();
   });
 
-  // ── Step login ──
+  // Step login
   document.getElementById('pay-login-btn').addEventListener('click', doPayLogin);
   document.getElementById('pay-back-login').addEventListener('click', hidePayment);
 
-  // ── Step cupom ──
+  // Step cupom
   document.getElementById('pay-apply-coupon-btn').addEventListener('click', doApplyCoupon);
   document.getElementById('pay-remove-coupon-btn').addEventListener('click', doRemoveCoupon);
   document.getElementById('pay-skip-coupon-btn').addEventListener('click', doContinueFromCoupon);
@@ -511,16 +496,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') doApplyCoupon();
   });
 
-  // ── Step confirmar ──
+  // Step confirmar
   document.getElementById('pay-confirm-btn').addEventListener('click', doConfirmPayment);
   document.getElementById('pay-change-user').addEventListener('click', () => payShowStep('pay-step-login'));
   document.getElementById('pay-back-coupon').addEventListener('click', () => payShowStep('pay-step-coupon'));
 
-  // ── Step sucesso / erro ──
+  // Step sucesso / erro
   document.getElementById('pay-new-btn').addEventListener('click', () => { hidePayment(); loggedUser = null; });
   document.getElementById('pay-error-retry').addEventListener('click', hidePayment);
 
-  // ── Enter no login ──
+  // Enter no login
   document.getElementById('pay-gix-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('pay-senha-input').focus();
   });
@@ -530,21 +515,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateCartCount();
   renderCart();
-});
-
-// ─── Nav tabs ───
-const homeTab = document.getElementById("home-tab");
-const cartTab = document.getElementById("cart-tab");
-
-homeTab.addEventListener("click", () => {
-  homeTab.classList.add("active");
-  cartTab.classList.remove("active");
-  closeCart();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-});
-
-cartTab.addEventListener("click", () => {
-  cartTab.classList.add("active");
-  homeTab.classList.remove("active");
-  openCart();
 });
