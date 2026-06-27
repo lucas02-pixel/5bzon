@@ -197,7 +197,6 @@ function renderCart() {
 
   if (entries.length === 0) {
     container.innerHTML = '<div class="cart-empty">🛒<br/>Carrinho vazio.<br/>Adicione uns quadrinhos aí!</div>';
-    // Desabilita o botão quando carrinho está vazio
     if (checkoutBtn) checkoutBtn.disabled = true;
   } else {
     container.innerHTML = '';
@@ -224,7 +223,6 @@ function renderCart() {
         changeQty(parseInt(btn.dataset.id), parseInt(btn.dataset.delta))
       )
     );
-    // Habilita o botão quando há itens
     if (checkoutBtn) checkoutBtn.disabled = false;
   }
 
@@ -251,7 +249,6 @@ function payShowStep(id) {
 
 // ─── Show Payment ───
 function showPayment() {
-  // Só abre se o carrinho tiver itens
   if (cartTotal() === 0) return;
 
   closeCart();
@@ -486,24 +483,27 @@ document.addEventListener('DOMContentLoaded', () => {
   requestWelcomeNotification();
   setupNotifications();
 
-  document.getElementById('cart-btn').addEventListener('click', openCart);
-  document.getElementById('overlay').addEventListener('click', closeCart);
-  document.getElementById('close-drawer').addEventListener('click', closeCart);
+  // ── Overlay fecha o carrinho ──
+  document.getElementById('overlay').addEventListener('click', () => {
+    closeCart();
+    homeTab.classList.add("active");
+    cartTab.classList.remove("active");
+  });
 
   // ── Botão Finalizar Compra ──
   const checkoutBtn = document.getElementById('checkout-btn');
-  checkoutBtn.disabled = true; // começa desabilitado até ter itens
+  checkoutBtn.disabled = true;
   checkoutBtn.addEventListener('click', () => {
     if (cartTotal() > 0) {
       showPayment();
     }
   });
 
-  // Step login
+  // ── Step login ──
   document.getElementById('pay-login-btn').addEventListener('click', doPayLogin);
   document.getElementById('pay-back-login').addEventListener('click', hidePayment);
 
-  // Step cupom
+  // ── Step cupom ──
   document.getElementById('pay-apply-coupon-btn').addEventListener('click', doApplyCoupon);
   document.getElementById('pay-remove-coupon-btn').addEventListener('click', doRemoveCoupon);
   document.getElementById('pay-skip-coupon-btn').addEventListener('click', doContinueFromCoupon);
@@ -511,16 +511,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') doApplyCoupon();
   });
 
-  // Step confirmar
+  // ── Step confirmar ──
   document.getElementById('pay-confirm-btn').addEventListener('click', doConfirmPayment);
   document.getElementById('pay-change-user').addEventListener('click', () => payShowStep('pay-step-login'));
   document.getElementById('pay-back-coupon').addEventListener('click', () => payShowStep('pay-step-coupon'));
 
-  // Step sucesso / erro
+  // ── Step sucesso / erro ──
   document.getElementById('pay-new-btn').addEventListener('click', () => { hidePayment(); loggedUser = null; });
   document.getElementById('pay-error-retry').addEventListener('click', hidePayment);
 
-  // Enter no login
+  // ── Enter no login ──
   document.getElementById('pay-gix-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('pay-senha-input').focus();
   });
@@ -547,9 +547,4 @@ cartTab.addEventListener("click", () => {
   cartTab.classList.add("active");
   homeTab.classList.remove("active");
   openCart();
-});
-
-document.getElementById("overlay").addEventListener("click", () => {
-  homeTab.classList.add("active");
-  cartTab.classList.remove("active");
 });
