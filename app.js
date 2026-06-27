@@ -246,10 +246,12 @@ function showPayment() {
   document.getElementById('pay-valor').textContent = cartTotal();
   payShowStep('pay-step-login');
   document.getElementById('payment-screen').classList.add('visible');
+  document.querySelector('.bottom-nav').style.display = 'none';
 }
 
 function hidePayment() {
   document.getElementById('payment-screen').classList.remove('visible');
+  document.querySelector('.bottom-nav').style.display = '';
 }
 
 async function doPayLogin() {
