@@ -7,6 +7,7 @@ import {
   collection,
   getDocs,
   doc,
+  updateDoc,
   runTransaction,
   addDoc,
   serverTimestamp
@@ -36,6 +37,23 @@ let cart          = {};
 let loggedUser    = null;
 let coupons       = [];
 let appliedCoupon = null;
+
+// ─── Hash de senha (mesma lógica usada no Banco One) ───
+// Precisa ser IDÊNTICA à do banco, senão uma conta migrada lá
+// deixa de logar aqui, e vice-versa.
+function pareceHash(valor) {
+  return typeof valor === 'string' && /^[a-f0-9]{64}$/i.test(valor);
+}
+
+async function gerarHashSenha(nome, senha) {
+  const textoComSal = nome.toLowerCase() + ':' + senha;
+  const encoder = new TextEncoder();
+  const dados = encoder.encode(textoComSal);
+  const bufferHash = await crypto.subtle.digest('SHA-256', dados);
+  return Array.from(new Uint8Array(bufferHash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 // ─── Helpers Firebase ───
 async function findByGix(gix) {
@@ -270,9 +288,33 @@ async function doPayLogin() {
 
   try {
     const result = await findByGix(gix);
-    if (!result)                        { errEl.textContent = 'Conta não encontrada';     errEl.style.display = 'block'; return; }
-    if (result.data.senha !== senha)    { errEl.textContent = 'Senha incorreta';          errEl.style.display = 'block'; return; }
-    if (gix === GIX_LOJA.toUpperCase()){ errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
+    if (!result) { errEl.textContent = 'Conta não encontrada'; errEl.style.display = 'block'; return; }
+
+    const nomeConta = result.id; // mesma lógica do Banco One: nome = ID do documento
+
+    if (pareceHash(result.data.senha)) {
+      // Conta já migrada: compara hashes
+      const hashDigitado = await gerarHashSenha(nomeConta, senha);
+      if (hashDigitado !== result.data.senha) {
+        errEl.textContent = 'Senha incorreta';
+        errEl.style.display = 'block';
+        return;
+      }
+    } else {
+      // Conta ainda em texto puro: compara direto e migra na hora
+      if (result.data.senha !== senha) {
+        errEl.textContent = 'Senha incorreta';
+        errEl.style.display = 'block';
+        return;
+      }
+      const novoHash = await gerarHashSenha(nomeConta, senha);
+      const docRef = doc(db, "Contas", result.id);
+      updateDoc(docRef, { senha: novoHash }).catch(err =>
+        console.warn('Não foi possível migrar a senha para hash:', err)
+      );
+    }
+
+    if (gix === GIX_LOJA.toUpperCase()) { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
 
     loggedUser = { docId: result.id, gix, nome: result.data.nome || result.id, saldo: result.data.saldo };
     renderCouponStep();
