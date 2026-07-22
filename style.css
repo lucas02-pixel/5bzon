@@ -189,7 +189,10 @@ header {
 .ci-btn:hover { background: var(--accent); color: #ffffff; }
 .ci-qty { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; min-width: 20px; text-align: center; color: var(--text); }
 
-.drawer-footer { padding: 20px 28px; border-top: 1px solid var(--border); }
+.drawer-footer {
+  padding: 20px 28px calc(100px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+}
 .total-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
 .total-label { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted); letter-spacing: 2px; }
 .total-val { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--accent); line-height: 1; }
@@ -466,6 +469,9 @@ header {
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 600px) {
+  .drawer-footer {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+}
   header { padding: 16px 20px; }
   .hero { padding: 40px 20px 32px; }
   .products-grid { padding: 0 20px 60px; }
