@@ -38,9 +38,13 @@ let loggedUser    = null;
 let coupons       = [];
 let appliedCoupon = null;
 
-// ─── Hash de senha (mesma lógica usada no Banco One) ───
+// ─── Hash de senha — bcrypt, com migração automática (mesma lógica do Banco One) ───
 // Precisa ser IDÊNTICA à do banco, senão uma conta migrada lá
 // deixa de logar aqui, e vice-versa.
+function ehHashBcrypt(valor) {
+  return typeof valor === 'string' && /^\$2[aby]\$\d{2}\$/.test(valor);
+}
+
 function pareceHash(valor) {
   return typeof valor === 'string' && /^[a-f0-9]{64}$/i.test(valor);
 }
@@ -53,6 +57,37 @@ async function gerarHashSenha(nome, senha) {
   return Array.from(new Uint8Array(bufferHash))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+function gerarHashBcrypt(senha) {
+  return dcodeIO.bcrypt.hashSync(senha, 10);
+}
+
+function verificarBcrypt(senha, hashSalvo) {
+  return dcodeIO.bcrypt.compareSync(senha, hashSalvo);
+}
+
+async function verificarEMigrarSenha(nome, senhaDigitada, senhaSalva, docId) {
+  if (ehHashBcrypt(senhaSalva)) {
+    return verificarBcrypt(senhaDigitada, senhaSalva);
+  }
+
+  if (pareceHash(senhaSalva)) {
+    const hashCalc = await gerarHashSenha(nome, senhaDigitada);
+    if (hashCalc !== senhaSalva) return false;
+    const novoBcrypt = gerarHashBcrypt(senhaDigitada);
+    updateDoc(doc(db, "Contas", docId), { senha: novoBcrypt }).catch(err =>
+      console.warn('Não foi possível migrar sha256 → bcrypt:', err)
+    );
+    return true;
+  }
+
+  if (senhaSalva !== senhaDigitada) return false;
+  const novoBcrypt = gerarHashBcrypt(senhaDigitada);
+  updateDoc(doc(db, "Contas", docId), { senha: novoBcrypt }).catch(err =>
+    console.warn('Não foi possível migrar texto puro → bcrypt:', err)
+  );
+  return true;
 }
 
 // ─── Helpers Firebase ───
@@ -292,26 +327,11 @@ async function doPayLogin() {
 
     const nomeConta = result.id; // mesma lógica do Banco One: nome = ID do documento
 
-    if (pareceHash(result.data.senha)) {
-      // Conta já migrada: compara hashes
-      const hashDigitado = await gerarHashSenha(nomeConta, senha);
-      if (hashDigitado !== result.data.senha) {
-        errEl.textContent = 'Senha incorreta';
-        errEl.style.display = 'block';
-        return;
-      }
-    } else {
-      // Conta ainda em texto puro: compara direto e migra na hora
-      if (result.data.senha !== senha) {
-        errEl.textContent = 'Senha incorreta';
-        errEl.style.display = 'block';
-        return;
-      }
-      const novoHash = await gerarHashSenha(nomeConta, senha);
-      const docRef = doc(db, "Contas", result.id);
-      updateDoc(docRef, { senha: novoHash }).catch(err =>
-        console.warn('Não foi possível migrar a senha para hash:', err)
-      );
+    const senhaOk = await verificarEMigrarSenha(nomeConta, senha, result.data.senha, result.id);
+    if (!senhaOk) {
+      errEl.textContent = 'Senha incorreta';
+      errEl.style.display = 'block';
+      return;
     }
 
     if (gix === GIX_LOJA.toUpperCase()) { errEl.textContent = 'Use uma conta de cliente'; errEl.style.display = 'block'; return; }
