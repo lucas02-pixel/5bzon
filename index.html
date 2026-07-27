@@ -240,6 +240,11 @@
     <small>Início</small>
   </button>
 
+  <button class="nav-item" id="publish-tab">
+    <span>➕</span>
+    <small>Publicar</small>
+  </button>
+
   <button class="nav-item" id="cart-tab">
     <span>🛒</span>
     <small>Carrinho</small>
@@ -325,6 +330,45 @@
       <div class="total-val" id="cart-total">0</div>
     </div>
     <button class="checkout-btn" id="checkout-btn" disabled>FINALIZAR COMPRA</button>
+  </div>
+</div>
+
+<!-- ─── MODAL: PUBLICAR PRODUTO ─── -->
+<div class="publish-overlay" id="publishOverlay">
+  <div class="publish-modal">
+    <span class="close-btn" id="closePublish">&times;</span>
+
+    <div class="pay-step-tag">// publicar produto</div>
+    <div class="pay-step-head">Novo produto</div>
+
+    <div class="pay-input-group">
+      <label class="pay-input-label">Seu GIX</label>
+      <input id="pub-gix" type="text" placeholder="ex: SUL375966" class="pay-input"/>
+    </div>
+
+    <div class="pay-input-group">
+      <label class="pay-input-label">Nome do produto</label>
+      <input id="pub-nome" type="text" placeholder="ex: Quadrinho especial" class="pay-input"/>
+    </div>
+
+    <div class="pay-input-group">
+      <label class="pay-input-label">Descrição</label>
+      <input id="pub-desc" type="text" placeholder="ex: edição limitada" class="pay-input"/>
+    </div>
+
+    <div class="pay-input-group">
+      <label class="pay-input-label">Preço (sulegais)</label>
+      <input id="pub-preco" type="number" min="1" placeholder="ex: 10" class="pay-input"/>
+    </div>
+
+    <div class="pay-input-group">
+      <label class="pay-input-label">Emoji</label>
+      <input id="pub-emoji" type="text" maxlength="4" placeholder="📦" class="pay-input"/>
+    </div>
+
+    <div class="pay-error" id="pub-error" style="display:none"></div>
+
+    <button class="pay-action-btn" id="pub-submit-btn">Publicar produto</button>
   </div>
 </div>
 
@@ -421,7 +465,7 @@
           </div>
           <div class="pay-confirm-row">
             <span class="pay-confirm-key">Destino</span>
-            <span class="pay-confirm-val muted">SUL873302 (loja)</span>
+            <span class="pay-confirm-val muted" id="pay-destino-label">SUL873302 (loja)</span>
           </div>
         </div>
 
