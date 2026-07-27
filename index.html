@@ -235,6 +235,8 @@
 
 
 <nav class="bottom-nav">
+  <!-- Dentro do body, onde fica a nav -->
+<nav class="bottom-nav">
   <button class="nav-item active" id="home-tab">
     <span>🏠</span>
     <small>Início</small>
@@ -245,14 +247,25 @@
     <small>Publicar</small>
   </button>
 
+  <button class="nav-item" id="orders-tab"> <!-- NOVA ABA -->
+    <span>📦</span>
+    <small>Pedidos</small>
+  </button>
+
   <button class="nav-item" id="cart-tab">
     <span>🛒</span>
     <small>Carrinho</small>
-
-    <div class="nav-cart-count" id="cart-count">
-      0
-    </div>
+    <div class="nav-cart-count" id="cart-count">0</div>
   </button>
+</nav>
+
+<!-- Adicione esta seção logo após a grid de produtos, antes do overlay -->
+<div id="orders-section" style="display:none; padding: 20px 32px 140px;">
+  <div class="section-label">// seus pedidos</div>
+  <div id="orders-list" style="display:flex; flex-direction:column; gap:16px;">
+    <!-- Os pedidos aparecerão aqui via JS -->
+  </div>
+</div>
 </nav>
 
   <div class="carousel-container">
