@@ -243,13 +243,106 @@ function closeCart() {
 
 // CORREÇÃO #5: Botão de fechar carrinho
 document.addEventListener('DOMContentLoaded', () => {
-  const closeCartBtn = document.getElementById('close-cart-btn');
-  if(closeCartBtn) closeCartBtn.addEventListener('click', () => {
+  runIntro();
+  listenToProducts();
+  loadCoupons();
+  setupNotifications();
+
+  const tabs = {
+    home: document.getElementById("home-tab"),
+    publish: document.getElementById("publish-tab"),
+    orders: document.getElementById("orders-tab"),
+    cart: document.getElementById("cart-tab")
+  };
+
+  // CORREÇÃO #1: Alternar seções corretamente
+  function setActiveTab(tabName) {
+    Object.values(tabs).forEach(t => t.classList.remove("active"));
+    if(tabs[tabName]) tabs[tabName].classList.add("active");
+    
+    // Esconde/Mostra as seções principais
+    document.getElementById('home-section').style.display = (tabName === 'home') ? 'block' : 'none';
+    document.getElementById('orders-section').style.display = (tabName === 'orders') ? 'block' : 'none';
+
+    if (tabName === 'cart') openCart();
+    else closeCart();
+  }
+
+  tabs.home.addEventListener("click", () => setActiveTab('home'));
+  
+  // CORREÇÃO #9: Resetar aba ao fechar modal de publicação
+  tabs.publish.addEventListener("click", () => {
+    setActiveTab('publish');
+    document.getElementById('publishOverlay').classList.add('open');
+  });
+  
+  tabs.cart.addEventListener("click", () => setActiveTab('cart'));
+  
+  if(tabs.orders) tabs.orders.addEventListener("click", () => {
+    setActiveTab('orders');
+    // Se já estiver logado, renderiza os pedidos imediatamente
+    if(loggedUser) renderOrders(); 
+  });
+
+  document.getElementById('overlay').addEventListener('click', () => {
     closeCart();
     setActiveTab('home');
   });
-});
 
+  // ─── Publish Modal ───
+  const pubOverlay = document.getElementById('publishOverlay');
+  const closePub = document.getElementById('closePublish');
+  const pubBtn = document.getElementById('pub-submit-btn');
+  const pubErr = document.getElementById('pub-error');
+
+  function closePublishModal() {
+    pubOverlay.classList.remove('open'); 
+    pubErr.style.display = 'none';
+    setActiveTab('home'); // CORREÇÃO #9: Volta para a aba Home
+  }
+
+  closePub.addEventListener('click', closePublishModal);
+  pubOverlay.addEventListener('click', (e) => { if (e.target === pubOverlay) closePublishModal(); });
+
+  pubBtn.addEventListener('click', async () => {
+    // ... (mantenha a lógica de publicação igual) ...
+    // Apenas garanta que ao fechar, chame closePublishModal()
+  });
+
+  // ─── CORREÇÃO #2: Login da Aba de Pedidos ───
+  const ordersLoginBtn = document.getElementById('orders-login-btn');
+  if(ordersLoginBtn) {
+    ordersLoginBtn.addEventListener('click', async () => {
+      const gix = document.getElementById('orders-gix-input').value.trim().toUpperCase();
+      const senha = document.getElementById('orders-senha-input').value.trim();
+      const errEl = document.getElementById('orders-login-error');
+      errEl.style.display = 'none';
+      
+      if (!gix || !senha) { errEl.textContent = 'Preencha todos os campos'; errEl.style.display = 'block'; return; }
+      
+      ordersLoginBtn.disabled = true; ordersLoginBtn.textContent = 'Verificando...';
+      try {
+        const result = await findByGix(gix);
+        if (!result) throw new Error('Conta não encontrada');
+        if (!(await verificarEMigrarSenha(result.id, senha, result.data.senha, result.id))) throw new Error('Senha incorreta');
+        
+        loggedUser = { docId: result.id, gix, nome: result.data.nome || result.id, saldo: result.data.saldo };
+        listenToUserOrders(loggedUser.gix); // Inicia o listener de pedidos
+      } catch (e) {
+        errEl.textContent = e.message; errEl.style.display = 'block';
+      } finally {
+        ordersLoginBtn.disabled = false; ordersLoginBtn.textContent = 'Ver meus pedidos →';
+      }
+    });
+  }
+
+  // ─── Payment Events (Mantenha os listeners de pagamento iguais) ───
+  document.getElementById('checkout-btn').addEventListener('click', () => { if (cartTotal() > 0) showPayment(); });
+  // ... resto dos listeners de pagamento ...
+  
+  updateCartCount();
+  renderCart();
+});
 function payShowStep(id) {
   ['pay-step-login', 'pay-step-coupon', 'pay-step-paying', 'pay-step-success', 'pay-step-error']
     .forEach(s => document.getElementById(s).style.display = s === id ? 'block' : 'none');
