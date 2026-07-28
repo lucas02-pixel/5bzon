@@ -42,7 +42,6 @@
         background: #f4f4f4;
     }
 
-    /* Botão base para o OK do popup */
     .open-btn {
         display: inline-block;
         padding: 12px 20px;
@@ -59,9 +58,8 @@
         background: #45a049;
     }
 
-    /* Fundo escurecido */
     .modal-overlay {
-        display: none; /* escondido por padrão, mudará para flex via JS */
+        display: none;
         position: fixed;
         top: 0; left: 0;
         width: 100%; height: 100%;
@@ -72,7 +70,6 @@
         animation: fadeIn 0.3s ease;
     }
 
-    /* Caixa do popup */
     .modal {
         background: white;
         padding: 20px;
@@ -84,7 +81,6 @@
         position: relative;
     }
 
-    /* Botão de fechar */
     .close-btn {
         position: absolute;
         top: 10px;
@@ -98,7 +94,6 @@
         color: #000;
     }
 
-    /* --- NOVO ESTILO DO CARROSSEL MODERNO --- */
     .carousel-container {
         position: relative;
         width: 90%;
@@ -108,7 +103,7 @@
         overflow: hidden;
         border-radius: 12px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        background-color: #1a1a1a; /* Fundo escuro realça imagens de qualquer proporção */
+        background-color: #1a1a1a;
     }
 
     .carousel-track {
@@ -129,11 +124,9 @@
     .carousel-slide img {
         width: 100%;
         height: 100%;
-        /* Ajusta a imagem perfeitamente sem cortar ou distorcer */
         object-fit: contain; 
     }
 
-    /* Setas de Navegação */
     .carousel-arrow {
         position: absolute;
         top: 50%;
@@ -162,7 +155,6 @@
     .arrow-left { left: 15px; }
     .arrow-right { right: 15px; }
 
-    /* Indicadores (Bolinhas) */
     .carousel-dots {
         position: absolute;
         bottom: 15px;
@@ -187,7 +179,6 @@
         transform: scale(1.2);
     }
 
-    /* Animações */
     @keyframes fadeIn {
         from {opacity: 0;}
         to {opacity: 1;}
@@ -233,51 +224,70 @@
 
 <div id="site">
 
+  <!-- ─── NAV (era duplicada — corrigido) ─── -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="home-tab">
+      <span>🏠</span>
+      <small>Início</small>
+    </button>
+    <button class="nav-item" id="publish-tab">
+      <span>➕</span>
+      <small>Publicar</small>
+    </button>
+    <button class="nav-item" id="orders-tab">
+      <span>📦</span>
+      <small>Pedidos</small>
+    </button>
+    <button class="nav-item" id="cart-tab">
+      <span>🛒</span>
+      <small>Carrinho</small>
+      <div class="nav-cart-count" id="cart-count">0</div>
+    </button>
+  </nav>
 
-<nav class="bottom-nav">
-<nav class="bottom-nav">
-  <button class="nav-item active" id="home-tab">
-    <span>🏠</span>
-    <small>Início</small>
-  </button>
-  <button class="nav-item" id="publish-tab">
-    <span>➕</span>
-    <small>Publicar</small>
-  </button>
-  <!-- NOVA ABA DE PEDIDOS -->
-  <button class="nav-item" id="orders-tab">
-    <span>📦</span>
-    <small>Pedidos</small>
-  </button>
-  <button class="nav-item" id="cart-tab">
-    <span>🛒</span>
-    <small>Carrinho</small>
-    <div class="nav-cart-count" id="cart-count">0</div>
-  </button>
-</nav>
-</nav>
-<!-- Seção de Pedidos (inicialmente escondida via JS/CSS se necessário, mas aqui deixamos visível e controlamos por JS) -->
-<div id="orders-section" style="display:none; padding: 20px 32px 140px;">
-  <div class="section-label">// seus pedidos</div>
-  <div id="orders-list" style="display:flex; flex-direction:column; gap:16px;"></div>
-</div>
-  <div class="carousel-container">
-      <button class="carousel-arrow arrow-left" id="prevBtn">&#10094;</button>
-      <button class="carousel-arrow arrow-right" id="nextBtn">&#10095;</button>
-      
-      <div class="carousel-track" id="carouselTrack">
-          <div class="carousel-slide">
-              <img src="https://raw.githubusercontent.com/lucas02-pixel/5bzon/main/5bzon%20(1).jpg" alt="Imagem 1">
-          </div>
-          <div class="carousel-slide">
-              <img src="https://raw.githubusercontent.com/lucas02-pixel/5bzon/main/5bzon.jpg" alt="Imagem 2">
-          </div>
-      </div>
+  <!-- ─── SEÇÃO PEDIDOS (agora escondida/mostrada corretamente pelo JS) ─── -->
+  <div id="orders-section" style="display:none; padding: 20px 32px 140px;">
+    <div class="section-label">// seus pedidos</div>
 
-      <div class="carousel-dots">
-          <div class="carousel-dot active" onclick="moveToSlide(0)"></div>
-          <div class="carousel-dot" onclick="moveToSlide(1)"></div>
+    <div id="orders-login-box" style="max-width:360px;">
+      <div class="pay-input-group">
+        <label class="pay-input-label">Código GIX</label>
+        <input id="orders-gix-input" type="text" placeholder="ex: SUL375966" class="pay-input"/>
       </div>
+      <div class="pay-input-group">
+        <label class="pay-input-label">Senha</label>
+        <input id="orders-senha-input" type="password" placeholder="Sua senha" class="pay-input"/>
+      </div>
+      <div class="pay-error" id="orders-login-error" style="display:none"></div>
+      <button class="pay-action-btn" id="orders-login-btn">Ver meus pedidos →</button>
+    </div>
+
+    <div id="orders-list" style="display:flex; flex-direction:column; gap:16px;"></div>
+  </div>
+
+  <!-- ─── SEÇÃO HOME (carrossel + produtos), agora dentro de um wrapper para poder esconder/mostrar ─── -->
+  <div id="home-section">
+    <div class="carousel-container">
+        <button class="carousel-arrow arrow-left" id="prevBtn">&#10094;</button>
+        <button class="carousel-arrow arrow-right" id="nextBtn">&#10095;</button>
+
+        <div class="carousel-track" id="carouselTrack">
+            <div class="carousel-slide">
+                <img src="https://raw.githubusercontent.com/lucas02-pixel/5bzon/main/5bzon%20(1).jpg" alt="Imagem 1">
+            </div>
+            <div class="carousel-slide">
+                <img src="https://raw.githubusercontent.com/lucas02-pixel/5bzon/main/5bzon.jpg" alt="Imagem 2">
+            </div>
+        </div>
+
+        <div class="carousel-dots">
+            <div class="carousel-dot active" onclick="moveToSlide(0)"></div>
+            <div class="carousel-dot" onclick="moveToSlide(1)"></div>
+        </div>
+    </div>
+
+    <div class="section-label">// produtos disponíveis</div>
+    <div class="products-grid" id="products-grid"></div>
   </div>
 
   <script>
@@ -285,7 +295,7 @@
       const dots = document.querySelectorAll('.carousel-dot');
       const prevBtn = document.getElementById('prevBtn');
       const nextBtn = document.getElementById('nextBtn');
-      
+
       let currentIndex = 0;
       const totalSlides = dots.length;
 
@@ -314,9 +324,6 @@
       nextBtn.addEventListener('click', nextSlide);
       prevBtn.addEventListener('click', prevSlide);
   </script>
-
-  <div class="section-label">// produtos disponíveis</div>
-  <div class="products-grid" id="products-grid"></div>
 
 </div>
 
