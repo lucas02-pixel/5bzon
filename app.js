@@ -399,28 +399,121 @@ async function doConfirmPayment() {
   const discount = rawTotal - totalToPay;
   const btn = document.getElementById('pay-confirm-btn');
   const errEl = document.getElementById('pay-paying-error');
+  
   errEl.style.display = 'none';
-  btn.disabled = true; btn.textContent = 'Processando...';
+  btn.disabled = true; 
+  btn.textContent = 'Processando...';
 
   try {
+    // 1. PREPARAR DADOS DOS VENDEDORES FORA DA TRANSAÇÃO
     const sellerTallies = {}; 
     for (const [id, qty] of Object.entries(cart)) {
       const p = products.find(x => x.id === id);
       if (!p) continue;
       const gix = p.gixVendedor || GIX_LOJA;
-      if (!sellerTallies[gix]) sellerTallies[gix] = { raw: 0, final: 0, items: [] };
+      if (!sellerTallies[gix]) sellerTallies[gix] = { raw: 0, final: 0 };
       sellerTallies[gix].raw += p.price * qty;
-      sellerTallies[gix].items.push(`${p.name} (x${qty})`);
     }
+
+    // Distribuir desconto proporcionalmente
     for (const gix in sellerTallies) {
       const ratio = rawTotal > 0 ? sellerTallies[gix].raw / rawTotal : 0;
       const sellerDiscount = Math.round(discount * ratio);
       sellerTallies[gix].final = sellerTallies[gix].raw - sellerDiscount;
     }
+    
+    // Ajuste de centavos/arredondamento para bater o total exato
     let currentSum = Object.values(sellerTallies).reduce((acc, curr) => acc + curr.final, 0);
     if (currentSum !== totalToPay && Object.keys(sellerTallies).length > 0) {
-      Object.values(sellerTallies)[0].final += (totalToPay - currentSum);
+      const firstKey = Object.keys(sellerTallies)[0];
+      sellerTallies[firstKey].final += (totalToPay - currentSum);
     }
+
+    // 2. BUSCAR TODOS OS DOCUMENTOS ENVOLVIDOS ANTES DA TRANSAÇÃO
+    const userRef = doc(db, "Contas", loggedUser.docId);
+    const userSnap = await getDocs(query(collection(db, "Contas"), where("__name__", "==", loggedUser.docId)));
+    // Como getDocs com __name__ pode ser chato, usamos o findByGix ou getDoc direto se soubermos o ID
+    // Mas como já temos o docId do loggedUser, vamos usar getDoc normal fora da transação para validação prévia
+    const { getDoc } = await import("https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js");
+    const preUserSnap = await getDoc(userRef);
+    
+    if (!preUserSnap.exists()) throw new Error('Conta não encontrada.');
+    if ((preUserSnap.data().saldo || 0) < totalToPay) throw new Error('Saldo insuficiente.');
+
+    const sellerRefsMap = {};
+    const sellerPreSnaps = {};
+    
+    for (const gix in sellerTallies) {
+      const sData = await findByGix(gix);
+      if (sData) {
+        sellerRefsMap[gix] = doc(db, "Contas", sData.id);
+        sellerPreSnaps[gix] = await getDoc(sellerRefsMap[gix]);
+      }
+    }
+
+    // 3. TRANSAÇÃO BLINDADA (APENAS ESCRITAS)
+    await runTransaction(db, async (t) => {
+      // Nota: Em alguns SDKs, t.update sem t.get prévio dentro da transação 
+      // funciona perfeitamente se você já garantiu a consistência fora.
+      // Porém, para garantir atomicidade estrita, o Firestore EXIGE t.get.
+      // A REGRA É: Todos os t.get devem vir ANTES de qualquer t.update/t.set.
+      
+      // FASE DE LEITURA (OBRIGATÓRIA)
+      const tUserSnap = await t.get(userRef);
+      const tSellerSnaps = {};
+      for (const gix in sellerRefsMap) {
+        tSellerSnaps[gix] = await t.get(sellerRefsMap[gix]);
+      }
+
+      // VALIDAÇÃO FINAL ATÔMICA
+      if (!tUserSnap.exists() || tUserSnap.data().saldo < totalToPay) {
+        throw new Error('Saldo insuficiente');
+      }
+
+      // FASE DE ESCRITA (SÓ AGORA!)
+      t.update(userRef, { saldo: tUserSnap.data().saldo - totalToPay });
+
+      for (const gix in tSellerSnaps) {
+        if (tSellerSnaps[gix].exists()) {
+          const novoSaldo = (tSellerSnaps[gix].data().saldo || 0) + sellerTallies[gix].final;
+          t.update(sellerRefsMap[gix], { saldo: novoSaldo });
+        }
+      }
+
+      // CRIAÇÃO DO PEDIDO (addDoc é permitido após leituras)
+      const orderItems = Object.entries(cart).map(([id, qty]) => {
+        const p = products.find(x => x.id === id);
+        return p ? { nome: p.name, qtd: qty, precoUnit: p.price, vendedor: p.gixVendedor || GIX_LOJA } : null;
+      }).filter(Boolean);
+
+      await addDoc(collection(db, "Pedidos"), {
+        compradorGix: loggedUser.gix,
+        compradorNome: loggedUser.nome,
+        itens: orderItems,
+        total: totalToPay,
+        cupom: appliedCoupon ? appliedCoupon.code : null,
+        status: "Pendente",
+        dataPedido: serverTimestamp()
+      });
+    });
+
+    // SUCESSO
+    document.getElementById('pay-success-valor').textContent = totalToPay;
+    document.getElementById('pay-success-nome').textContent = loggedUser.nome;
+    payShowStep('pay-step-success');
+    cart = {}; 
+    appliedCoupon = null; 
+    updateUI();
+
+  } catch (e) {
+    console.error("ERRO CRÍTICO PAGAMENTO:", e);
+    errEl.textContent = e.message.includes('Saldo') ? 'Saldo insuficiente.' : 'Erro: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; 
+    btn.textContent = 'Confirmar pagamento';
+  }
+}
 
     // Buscar referências ANTES da transação
     const sellerRefs = {};
