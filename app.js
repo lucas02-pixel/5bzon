@@ -38,19 +38,22 @@ let loggedUser = null;
 let coupons = [];
 let appliedCoupon = null;
 let userOrders = []; 
-let unsubscribeOrders = null; // Correção #4
+let unsubscribeOrders = null;
 
 // ─── Hash & Auth Helpers ───
 function ehHashBcrypt(valor) { return typeof valor === 'string' && /^\$2[aby]\$\d{2}\$/.test(valor); }
 function pareceHash(valor) { return typeof valor === 'string' && /^[a-f0-9]{64}$/i.test(valor); }
+
 async function gerarHashSenha(nome, senha) {
   const textoComSal = nome.toLowerCase() + ':' + senha;
   const encoder = new TextEncoder();
   const bufferHash = await crypto.subtle.digest('SHA-256', encoder.encode(textoComSal));
   return Array.from(new Uint8Array(bufferHash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
 function gerarHashBcrypt(senha) { return dcodeIO.bcrypt.hashSync(senha, 10); }
 function verificarBcrypt(senha, hashSalvo) { return dcodeIO.bcrypt.compareSync(senha, hashSalvo); }
+
 async function verificarEMigrarSenha(nome, senhaDigitada, senhaSalva, docId) {
   if (ehHashBcrypt(senhaSalva)) return verificarBcrypt(senhaDigitada, senhaSalva);
   if (pareceHash(senhaSalva)) {
@@ -64,7 +67,6 @@ async function verificarEMigrarSenha(nome, senhaDigitada, senhaSalva, docId) {
   return true;
 }
 
-// Correção #3: Otimização do findByGix
 async function findByGix(gix) {
   try {
     const q = query(collection(db, "Contas"), where("gix", "==", gix.toUpperCase()));
@@ -76,6 +78,7 @@ async function findByGix(gix) {
   } catch (e) {
     console.warn("Erro ao buscar por query, caindo para varredura:", e);
   }
+  // Fallback caso não haja índice criado no Firebase
   const snap = await getDocs(collection(db, "Contas"));
   for (const d of snap.docs) {
     const data = d.data();
@@ -89,11 +92,15 @@ async function setupNotifications() {
   try {
     if (await Notification.requestPermission() === 'granted') {
       const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-      const token = await getToken(messaging, { vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE', serviceWorkerRegistration: reg });
+      const token = await getToken(messaging, { 
+        vapidKey: 'BL--aAa65MV3IJvW0r7ZTENZhgVh1VqOdvmrh8XkmkMBf8m0pQNmA2bzPxo9q5N8tnlDAHiWDZ0ZPCBIs5E7ytE', 
+        serviceWorkerRegistration: reg 
+      });
       if (token) console.log('FCM Token:', token);
     }
   } catch (e) { console.error(e); }
 }
+
 function runIntro() {
   setTimeout(() => {
     document.getElementById('intro').classList.add('hidden');
@@ -110,12 +117,15 @@ function listenToProducts() {
     renderCart();
   });
 }
+
 async function loadCoupons() {
-  try { coupons = await (await fetch('https://raw.githubusercontent.com/lucas02-pixel/5bzon/refs/heads/main/coupons.json')).json(); } 
-  catch (e) { coupons = []; }
+  try { 
+    coupons = await (await fetch('https://raw.githubusercontent.com/lucas02-pixel/5bzon/refs/heads/main/coupons.json')).json(); 
+  } catch (e) { 
+    coupons = []; 
+  }
 }
 
-// Correção #4: Vazamento de memória
 function listenToUserOrders(gix) {
   if (unsubscribeOrders) unsubscribeOrders(); 
   if (!gix) return;
@@ -170,7 +180,6 @@ function renderOrders() {
     
     const div = document.createElement('div');
     div.className = 'order-card';
-    // Correção #6: Evita quebra se "itens" for undefined
     const itensHTML = (order.itens || []).map(i => `<div>${i.qtd}x ${i.nome}</div>`).join('');
     
     div.innerHTML = `
@@ -193,36 +202,42 @@ function addToCart(id) {
   cart[id] = qty + 1;
   updateUI();
 }
+
 function changeQty(id, delta) {
   const qty = (cart[id] || 0) + delta;
   if (qty <= 0) delete cart[id];
   else cart[id] = Math.min(qty, MAX_QTY);
   updateUI();
 }
+
 function cartTotal() {
   return Object.entries(cart).reduce((sum, [id, qty]) => {
     const p = products.find(x => x.id === id);
     return sum + (p ? p.price * qty : 0);
   }, 0);
 }
+
 function cartTotalWithDiscount() {
   const raw = cartTotal();
   if (!appliedCoupon) return raw;
   let total = raw;
-  // Correção #10: Math.floor em vez de Math.ceil
-  if (appliedCoupon.type === 'percent') total -= Math.floor(raw * appliedCoupon.value / 100);
+  // Math.round para descontos pequenos não zerarem injustamente
+  if (appliedCoupon.type === 'percent') total -= Math.round(raw * appliedCoupon.value / 100);
   else if (appliedCoupon.type === 'fixed') total -= appliedCoupon.value;
   return Math.max(0, total);
 }
+
 function updateUI() {
   renderProducts();
   renderCart();
   updateCartCount();
 }
+
 function updateCartCount() {
   const el = document.getElementById('cart-count');
   if (el) el.textContent = Object.values(cart).reduce((a, b) => a + b, 0);
 }
+
 function renderCart() {
   const container = document.getElementById('cart-items');
   const checkoutBtn = document.getElementById('checkout-btn');
@@ -255,7 +270,7 @@ function renderCart() {
     container.querySelectorAll('.ci-btn').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, parseInt(btn.dataset.delta))));
     if (checkoutBtn) checkoutBtn.disabled = false;
   }
-  // Correção #8: O carrinho mostra o total BRUTO, o desconto só aparece no checkout
+  // O carrinho mostra o total BRUTO, o desconto só aparece no checkout
   const totalEl = document.getElementById('cart-total');
   if(totalEl) totalEl.textContent = cartTotal(); 
 }
@@ -265,10 +280,12 @@ function openCart() {
   document.getElementById('cart-drawer').classList.add('open');
   document.getElementById('overlay').classList.add('open');
 }
+
 function closeCart() {
   document.getElementById('cart-drawer').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
 }
+
 function payShowStep(id) {
   ['pay-step-login', 'pay-step-coupon', 'pay-step-paying', 'pay-step-success', 'pay-step-error']
     .forEach(s => {
@@ -276,6 +293,7 @@ function payShowStep(id) {
       if(el) el.style.display = s === id ? 'block' : 'none';
     });
 }
+
 function showPayment() {
   if (cartTotal() === 0) return;
   closeCart();
@@ -289,6 +307,7 @@ function showPayment() {
   const nav = document.querySelector('.bottom-nav');
   if(nav) nav.style.display = 'none';
 }
+
 function hidePayment() {
   document.getElementById('payment-screen').classList.remove('visible');
   const nav = document.querySelector('.bottom-nav');
@@ -321,12 +340,14 @@ async function doPayLogin() {
     btn.disabled = false; btn.textContent = 'Entrar →';
   }
 }
+
 function renderCouponStep() {
   document.getElementById('pay-coupon-input').value = '';
   document.getElementById('pay-coupon-feedback').style.display = 'none';
   appliedCoupon = null;
   updateCouponSummary();
 }
+
 function doApplyCoupon() {
   const code = document.getElementById('pay-coupon-input').value.trim().toUpperCase();
   const fbEl = document.getElementById('pay-coupon-feedback');
@@ -338,12 +359,14 @@ function doApplyCoupon() {
   }
   updateCouponSummary();
 }
+
 function doRemoveCoupon() {
   appliedCoupon = null;
   document.getElementById('pay-coupon-input').value = '';
   document.getElementById('pay-coupon-feedback').style.display = 'none';
   updateCouponSummary();
 }
+
 function updateCouponSummary() {
   const raw = cartTotal();
   const total = cartTotalWithDiscount();
@@ -358,6 +381,7 @@ function updateCouponSummary() {
   }
   document.getElementById('pay-remove-coupon-btn').style.display = appliedCoupon ? 'block' : 'none';
 }
+
 function doContinueFromCoupon() {
   const total = cartTotalWithDiscount();
   document.getElementById('pay-user-name').textContent = loggedUser.nome;
@@ -369,7 +393,6 @@ function doContinueFromCoupon() {
   payShowStep('pay-step-paying');
 }
 
-// Correção #3: Transação Segura
 async function doConfirmPayment() {
   const totalToPay = cartTotalWithDiscount();
   const rawTotal = cartTotal();
@@ -390,8 +413,8 @@ async function doConfirmPayment() {
       sellerTallies[gix].items.push(`${p.name} (x${qty})`);
     }
     for (const gix in sellerTallies) {
-      const ratio = sellerTallies[gix].raw / rawTotal;
-      const sellerDiscount = Math.floor(discount * ratio);
+      const ratio = rawTotal > 0 ? sellerTallies[gix].raw / rawTotal : 0;
+      const sellerDiscount = Math.round(discount * ratio);
       sellerTallies[gix].final = sellerTallies[gix].raw - sellerDiscount;
     }
     let currentSum = Object.values(sellerTallies).reduce((acc, curr) => acc + curr.final, 0);
@@ -406,16 +429,30 @@ async function doConfirmPayment() {
       if (sellerData) sellerRefs[gix] = doc(db, "Contas", sellerData.id);
     }
 
+    // TRANSAÇÃO CORRIGIDA: Leituras antes, Escritas depois
     await runTransaction(db, async (t) => {
       const userRef = doc(db, "Contas", loggedUser.docId);
+      
+      // 1. TODAS AS LEITURAS PRIMEIRO
       const userSnap = await t.get(userRef);
-      if (!userSnap.exists() || userSnap.data().saldo < totalToPay) throw new Error('Saldo insuficiente');
+      
+      const sellerSnaps = {};
+      for (const gix in sellerRefs) {
+        sellerSnaps[gix] = await t.get(sellerRefs[gix]);
+      }
+
+      // 2. VALIDAÇÕES
+      if (!userSnap.exists() || userSnap.data().saldo < totalToPay) {
+        throw new Error('Saldo insuficiente');
+      }
+
+      // 3. TODAS AS ESCRITAS POR ÚLTIMO
       t.update(userRef, { saldo: userSnap.data().saldo - totalToPay });
 
-      for (const gix in sellerTallies) {
-        if (sellerRefs[gix]) {
-          const sellerSnap = await t.get(sellerRefs[gix]);
-          if (sellerSnap.exists()) t.update(sellerRefs[gix], { saldo: (sellerSnap.data().saldo || 0) + sellerTallies[gix].final });
+      for (const gix in sellerSnaps) {
+        const snap = sellerSnaps[gix];
+        if (snap.exists()) {
+          t.update(snap.ref, { saldo: (snap.data().saldo || 0) + sellerTallies[gix].final });
         }
       }
 
@@ -441,6 +478,7 @@ async function doConfirmPayment() {
     cart = {}; appliedCoupon = null; updateUI();
 
   } catch (e) {
+    console.error("Erro no pagamento:", e);
     errEl.textContent = e.message === 'Saldo insuficiente' ? 'Saldo insuficiente.' : 'Falha na transação: ' + e.message;
     errEl.style.display = 'block';
   } finally {
@@ -462,7 +500,6 @@ document.addEventListener('DOMContentLoaded', () => {
     cart: document.getElementById("cart-tab")
   };
 
-  // Correção #1: Alternar seções
   function setActiveTab(tabName) {
     Object.values(tabs).forEach(t => t.classList.remove("active"));
     if(tabs[tabName]) tabs[tabName].classList.add("active");
@@ -478,7 +515,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if(tabs.home) tabs.home.addEventListener("click", () => setActiveTab('home'));
   
-  // Correção #9: Resetar aba ao fechar modal de publicação
   if(tabs.publish) tabs.publish.addEventListener("click", () => {
     setActiveTab('publish');
     document.getElementById('publishOverlay').classList.add('open');
@@ -497,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setActiveTab('home');
   });
 
-  // Correção #5: Botão de fechar carrinho
+  // Botão de fechar carrinho
   const closeCartBtn = document.getElementById('close-cart-btn');
   if(closeCartBtn) closeCartBtn.addEventListener('click', () => {
     closeCart();
@@ -554,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Correção #2: Login da Aba de Pedidos
+  // Login da Aba de Pedidos
   const ordersLoginBtn = document.getElementById('orders-login-btn');
   if(ordersLoginBtn) {
     ordersLoginBtn.addEventListener('click', async () => {
@@ -582,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Payment Events (Seguros)
+  // Payment Events
   const checkoutBtn = document.getElementById('checkout-btn');
   if (checkoutBtn) checkoutBtn.addEventListener('click', () => { if (cartTotal() > 0) showPayment(); });
   
