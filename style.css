@@ -722,3 +722,15 @@ header {
   border-top: 1px dashed var(--border);
   padding-top: 8px;
 }
+/* Altere o z-index do modal de boas vindas para ficar acima da navbar */
+.modal-overlay {
+    z-index: 1000; /* Era 999 */
+    /* ... resto do código */
+}
+
+/* Adicione isso para garantir que o botão de fechar do carrinho fique visível */
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Garante o espaçamento do botão */
+}
