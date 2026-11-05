@@ -569,6 +569,9 @@ async function doConfirmPayment() {
   } catch (e) {
     console.error(e);
     let msg = 'Falha na transação. Tente novamente.';
+    if (e.code === 'permission-denied') msg = 'Permissão negada pelo Firestore (verifique as regras de segurança). [permission-denied]';
+    else if (e.code) msg += ' [' + e.code + ']';
+    else if (e.message) msg += ' [' + e.message + ']';
     if (e.message === 'Saldo insuficiente') msg = 'Saldo insuficiente para esta compra.';
     else if (e.message === 'Produto indisponível') msg = 'Um dos produtos não está mais disponível. Revise o carrinho.';
     else if (e.message === 'Carrinho vazio') msg = 'Seu carrinho está vazio.';
