@@ -9,9 +9,11 @@ import {
   runTransaction,
   addDoc,
   serverTimestamp,
-  onSnapshot // <-- ADICIONADO para tempo real
+  onSnapshot,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging.js";
+import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXFhRZ_Byp40-sIxaNkyICoe066p6J04w",
@@ -24,7 +26,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const messaging = getMessaging(app);
+// Messaging não é suportado em todos os navegadores (ex.: Safari antigo, http, modo anônimo).
+// Se der erro aqui sem try/catch, o módulo inteiro quebra e NADA funciona (inclusive pagamentos).
+let messaging = null;
+isSupported()
+  .then(ok => { if (ok) messaging = getMessaging(app); })
+  .catch(err => console.warn('Messaging indisponível:', err));
 
 const GIX_LOJA = "SUL873302";
 const MAX_QTY = 5;
@@ -81,7 +88,21 @@ async function verificarEMigrarSenha(nome, senhaDigitada, senhaSalva, docId) {
 }
 
 // ─── Helpers Firebase ───
+function escapeHtml(valor) {
+  return String(valor ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 async function findByGix(gix) {
+  const alvo = gix.toUpperCase();
+  // Busca direta (rápida e sem baixar todas as contas)
+  const direta = await getDocs(query(collection(db, "Contas"), where("gix", "==", alvo)));
+  if (!direta.empty) {
+    const d = direta.docs[0];
+    return { id: d.id, data: d.data() };
+  }
+  // Fallback para contas antigas com GIX salvo em outra caixa (minúscula/mista)
   const snap = await getDocs(collection(db, "Contas"));
   for (const d of snap.docs) {
     const data = d.data();
@@ -95,6 +116,10 @@ async function findByGix(gix) {
 // ─── Firebase Messaging Setup ───
 async function setupNotifications() {
   try {
+    if (!messaging) {
+      try { messaging = (await isSupported()) ? getMessaging(app) : null; } catch { messaging = null; }
+    }
+    if (!messaging || !('serviceWorker' in navigator) || !('Notification' in window)) return;
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       const swUrl = './firebase-messaging-sw.js';
@@ -132,15 +157,18 @@ function listenToProducts() {
   const q = collection(db, "Produtos"); // Coleção com P maiúsculo
   onSnapshot(q, (snapshot) => {
     // Mapeia para manter compatibilidade com o código existente (name, price, etc.)
-    products = snapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().nome,
-      desc: doc.data().desc,
-      price: doc.data().preco,
-      emoji: doc.data().emoji || '📦',
-      gixVendedor: doc.data().gixVendedor,
-      ...doc.data()
-    }));
+    products = snapshot.docs.map(d => {
+      const data = d.data();
+      return {
+        ...data,
+        id: d.id,
+        name: data.nome,
+        desc: data.desc || '',
+        price: Number(data.preco) || 0,
+        emoji: data.emoji || '📦',
+        gixVendedor: data.gixVendedor
+      };
+    });
     // Ordena por mais recente primeiro (se tiver timestamp)
     products.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
     
@@ -172,9 +200,9 @@ function renderProducts() {
     const card = document.createElement('div');
     card.className = 'product-card';
     card.innerHTML = `
-      <div class="product-emoji">${p.emoji}</div>
-      <div class="product-name">${p.name}</div>
-      <div class="product-desc">${p.desc} <br><span style="font-size:10px; opacity:0.7">Vendedor: ${p.gixVendedor || 'Loja'}</span></div>
+      <div class="product-emoji">${escapeHtml(p.emoji)}</div>
+      <div class="product-name">${escapeHtml(p.name)}</div>
+      <div class="product-desc">${escapeHtml(p.desc)} <br><span style="font-size:10px; opacity:0.7">Vendedor: ${escapeHtml(p.gixVendedor || 'Loja')}</span></div>
       <div class="product-footer">
         <div class="product-price">${p.price} <span>sulegais</span></div>
         <button class="add-btn ${maxed ? 'maxed' : ''}" data-id="${p.id}" ${maxed ? 'disabled' : ''}>
@@ -252,9 +280,9 @@ function renderCart() {
       const item = document.createElement('div');
       item.className = 'cart-item';
       item.innerHTML = `
-        <div class="ci-emoji">${p.emoji}</div>
+        <div class="ci-emoji">${escapeHtml(p.emoji)}</div>
         <div class="ci-info">
-          <div class="ci-name">${p.name}</div>
+          <div class="ci-name">${escapeHtml(p.name)}</div>
           <div class="ci-price">${p.price * qty} sulegais (${qty}x)</div>
         </div>
         <div class="ci-controls">
@@ -429,9 +457,6 @@ function doContinueFromCoupon() {
 
 // ─── CHECKOUT MULTI-VENDEDOR PROPORCIONAL ───
 async function doConfirmPayment() {
-  const totalToPay = cartTotalWithDiscount();
-  const rawTotal = cartTotal();
-  const discount = rawTotal - totalToPay;
   const btn = document.getElementById('pay-confirm-btn');
   const errEl = document.getElementById('pay-paying-error');
 
@@ -440,69 +465,91 @@ async function doConfirmPayment() {
   btn.textContent = 'Processando...';
 
   try {
-    // 1. Agrupar itens do carrinho por vendedor
-    const sellerTallies = {}; 
-    
-    for (const [id, qty] of Object.entries(cart)) {
-      const p = products.find(x => x.id === id);
-      if (!p) continue;
-      
-      const gix = p.gixVendedor || GIX_LOJA; // Fallback para a loja se não tiver vendedor
-      const itemRaw = p.price * qty;
+    if (!loggedUser) throw new Error('Sessão expirada');
 
-      if (!sellerTallies[gix]) {
-        sellerTallies[gix] = { raw: 0, final: 0, items: [] };
-      }
-      sellerTallies[gix].raw += itemRaw;
+    const entries = Object.entries(cart).filter(([, q]) => q > 0);
+    if (entries.length === 0) throw new Error('Carrinho vazio');
+
+    // Todo item do carrinho precisa ainda existir (produto pode ter sido removido em tempo real)
+    for (const [id] of entries) {
+      if (!products.find(x => x.id === id)) throw new Error('Produto indisponível');
+    }
+
+    const rawTotal = cartTotal();
+    const totalToPay = cartTotalWithDiscount();
+    const discount = rawTotal - totalToPay;
+    if (rawTotal <= 0) throw new Error('Carrinho vazio');
+
+    // 1. Agrupar itens do carrinho por vendedor
+    const sellerTallies = {};
+    for (const [id, qty] of entries) {
+      const p = products.find(x => x.id === id);
+      const gix = (p.gixVendedor || GIX_LOJA).toUpperCase();
+      if (!sellerTallies[gix]) sellerTallies[gix] = { raw: 0, final: 0, discount: 0, items: [] };
+      sellerTallies[gix].raw += p.price * qty;
       sellerTallies[gix].items.push(`${p.name} (x${qty})`);
     }
 
-    // 2. Calcular desconto proporcional para cada vendedor
+    // 2. Desconto proporcional por vendedor
     for (const gix in sellerTallies) {
-      const ratio = sellerTallies[gix].raw / rawTotal;
-      const sellerDiscount = Math.floor(discount * ratio);
-      sellerTallies[gix].discount = sellerDiscount;
-      sellerTallies[gix].final = sellerTallies[gix].raw - sellerDiscount;
+      const t = sellerTallies[gix];
+      t.discount = Math.floor(discount * (t.raw / rawTotal));
+      t.final = t.raw - t.discount;
     }
 
-    // 3. Ajustar erros de arredondamento para garantir que a soma bata exatamente com o totalToPay
-    let currentSum = Object.values(sellerTallies).reduce((acc, curr) => acc + curr.final, 0);
-    if (currentSum !== totalToPay && Object.keys(sellerTallies).length > 0) {
+    // 3. Ajuste de arredondamento para a soma bater exatamente com o total pago
+    const currentSum = Object.values(sellerTallies).reduce((acc, t) => acc + t.final, 0);
+    if (currentSum !== totalToPay) {
       const firstGix = Object.keys(sellerTallies)[0];
       sellerTallies[firstGix].final += (totalToPay - currentSum);
     }
 
-    // 4. Executar transação atômica no Firestore
+    // 4. Localizar a conta de cada vendedor ANTES da transação
+    //    (findByGix usa getDocs, que não é transacional; dentro da transação ele era re-executado a cada retry)
+    const credits = {}; // docId da conta -> valor a receber
+    for (const gix in sellerTallies) {
+      const acc = await findByGix(gix);
+      if (!acc) throw new Error('Vendedor não encontrado: ' + gix);
+      credits[acc.id] = (credits[acc.id] || 0) + sellerTallies[gix].final;
+    }
+
+    const buyerId = loggedUser.docId;
+    const buyerRef = doc(db, "Contas", buyerId);
+    const sellerList = Object.keys(credits)
+      .filter(id => id !== buyerId) // se o comprador for o próprio vendedor, o crédito é somado no saldo dele
+      .map(id => ({ id, ref: doc(db, "Contas", id) }));
+    const avisoRef = doc(collection(db, "avisos"));
+
+    // 5. Transação atômica: o Firestore exige TODAS as leituras antes de QUALQUER escrita
     await runTransaction(db, async (t) => {
-      const userRef = doc(db, "Contas", loggedUser.docId);
-      const userSnap = await t.get(userRef);
-      if (!userSnap.exists()) throw new Error('Conta não encontrada');
-      if (userSnap.data().saldo < totalToPay) throw new Error('Saldo insuficiente');
+      // ── Leituras ──
+      const buyerSnap = await t.get(buyerRef);
+      if (!buyerSnap.exists()) throw new Error('Conta não encontrada');
+      const sellerSnaps = await Promise.all(sellerList.map(s => t.get(s.ref)));
+      sellerSnaps.forEach((snap, i) => {
+        if (!snap.exists()) throw new Error('Vendedor não encontrado: ' + sellerList[i].id);
+      });
 
-      // Deduz do comprador
-      t.update(userRef, { saldo: userSnap.data().saldo - totalToPay });
+      const saldoComprador = Number(buyerSnap.data().saldo) || 0;
+      if (saldoComprador < totalToPay) throw new Error('Saldo insuficiente');
 
-      // Adiciona a cada vendedor proporcionalmente
-      for (const gix in sellerTallies) {
-        const sellerData = await findByGix(gix);
-        if (sellerData) {
-          const sellerRef = doc(db, "Contas", sellerData.id);
-          const sellerSnap = await t.get(sellerRef);
-          if (sellerSnap.exists()) {
-            const novoSaldo = (sellerSnap.data().saldo || 0) + sellerTallies[gix].final;
-            t.update(sellerRef, { saldo: novoSaldo });
-          }
-        }
-      }
+      // ── Escritas ──
+      t.update(buyerRef, { saldo: saldoComprador - totalToPay + (credits[buyerId] || 0) });
 
-      // 5. Registrar o aviso da transação
-      await addDoc(collection(db, "avisos"), {
+      sellerList.forEach((s, i) => {
+        const saldoVendedor = Number(sellerSnaps[i].data().saldo) || 0;
+        t.update(s.ref, { saldo: saldoVendedor + credits[s.id] });
+      });
+
+      // addDoc NÃO participa da transação (gravava mesmo se ela falhasse e duplicava nos retries).
+      // t.set com ref pré-criada faz o aviso entrar na mesma transação atômica.
+      t.set(avisoRef, {
         gix: loggedUser.gix,
         nome: loggedUser.nome,
-        detalhesVendedores: Object.entries(sellerTallies).map(([gix, data]) => ({
+        detalhesVendedores: Object.entries(sellerTallies).map(([gix, d]) => ({
           gix,
-          valorRecebido: data.final,
-          itens: data.items
+          valorRecebido: d.final,
+          itens: d.items
         })),
         total: totalToPay,
         cupom: appliedCoupon ? appliedCoupon.code : null,
@@ -521,7 +568,12 @@ async function doConfirmPayment() {
 
   } catch (e) {
     console.error(e);
-    const msg = e.message === 'Saldo insuficiente' ? 'Saldo insuficiente para esta compra.' : 'Falha na transação. Tente novamente.';
+    let msg = 'Falha na transação. Tente novamente.';
+    if (e.message === 'Saldo insuficiente') msg = 'Saldo insuficiente para esta compra.';
+    else if (e.message === 'Produto indisponível') msg = 'Um dos produtos não está mais disponível. Revise o carrinho.';
+    else if (e.message === 'Carrinho vazio') msg = 'Seu carrinho está vazio.';
+    else if (e.message === 'Sessão expirada') msg = 'Sessão expirada. Faça login novamente.';
+    else if (e.message?.startsWith('Vendedor não encontrado')) msg = 'Conta de um dos vendedores não foi encontrada. Nada foi cobrado.';
     errEl.textContent = msg;
     errEl.style.display = 'block';
     btn.disabled = false;
@@ -593,13 +645,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const gix = document.getElementById('pub-gix').value.trim().toUpperCase();
     const nome = document.getElementById('pub-nome').value.trim();
     const desc = document.getElementById('pub-desc').value.trim();
-    const preco = parseFloat(document.getElementById('pub-preco').value);
+    const preco = Number(document.getElementById('pub-preco').value);
     const emoji = document.getElementById('pub-emoji').value.trim() || '📦';
 
     pubError.style.display = 'none';
 
-    if (!gix || !nome || !preco || isNaN(preco) || preco <= 0) {
-      pubError.textContent = 'Preencha todos os campos corretamente (preço deve ser > 0).';
+    if (!gix || !nome || !Number.isInteger(preco) || preco <= 0) {
+      pubError.textContent = 'Preencha todos os campos corretamente (preço deve ser um número inteiro > 0).';
       pubError.style.display = 'block';
       return;
     }
